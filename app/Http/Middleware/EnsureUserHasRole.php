@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\UserRole;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +19,9 @@ class EnsureUserHasRole
 
         if ($user === null) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
             }
 
             return redirect()->guest(route('login', [], false));

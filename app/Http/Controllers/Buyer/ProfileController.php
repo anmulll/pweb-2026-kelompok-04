@@ -20,11 +20,7 @@ class ProfileController extends Controller
             return response()->json($user);
         }
 
-        if (view()->exists('buyer.profile')) {
-            return view('buyer.profile', compact('user'));
-        }
-
-        return response()->view('buyer.profile', compact('user'), 200, ['Content-Type' => 'text/html']);
+        return view('buyer.profile', compact('user'));
     }
 
     public function update(Request $request)

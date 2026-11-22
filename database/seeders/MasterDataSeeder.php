@@ -23,8 +23,8 @@ class MasterDataSeeder extends Seeder
             [
                 'name' => 'Adel Seller',
                 'password' => Hash::make('password'),
-                'role' => UserRole::SELLER,
-                'phone_number' => '081234567890',
+                'role' => UserRole::Seller,
+                'phone' => '081234567890',
             ]
         );
 
@@ -33,9 +33,9 @@ class MasterDataSeeder extends Seeder
             [
                 'name' => 'Budi Buyer',
                 'password' => Hash::make('password'),
-                'role' => UserRole::BUYER,
-                'phone_number' => '089876543210',
-                'default_shipping_address' => 'Jl. Perintis Kemerdekaan KM 10, Makassar, Sulawesi Selatan',
+                'role' => UserRole::Buyer,
+                'phone' => '089876543210',
+                'address' => 'Jl. Perintis Kemerdekaan KM 10, Makassar, Sulawesi Selatan',
             ]
         );
 

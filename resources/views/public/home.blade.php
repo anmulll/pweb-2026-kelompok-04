@@ -1,4 +1,4 @@
-<x-layouts.app title="iStore — Retailer Independen Apple Resmi & Terpercaya">
+<x-layouts.app title="iStore — Retailer Independen Perangkat Apple Baru & Second Terinspeksi">
     <div class="max-w-[1200px] mx-auto px-4 py-8 space-y-12">
         <!-- Hero Section -->
         <section class="relative rounded-3xl overflow-hidden glass-surface border border-zinc-800 p-8 md:p-14 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
@@ -7,7 +7,7 @@
                     Retailer Independen Apple
                 </span>
                 <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                    Pengalaman Apple Terbaik, Baru & Terinspeksi.
+                    Pengalaman Apple Terbaik, Baru &amp; Terinspeksi.
                 </h1>
                 <p class="text-zinc-400 text-sm md:text-base leading-relaxed">
                     Menyediakan iPhone, MacBook, iPad, dan aksesori Apple original. Setiap unit second melewati inspeksi ketat dengan transparansi kondisi 100%.
@@ -19,6 +19,11 @@
                     <x-ui.button href="{{ route('catalog.index', ['condition' => 'used']) }}" variant="secondary">
                         Lihat Unit Second
                     </x-ui.button>
+                    @guest
+                        <x-ui.button href="{{ route('login') }}" variant="secondary">
+                            Masuk
+                        </x-ui.button>
+                    @endguest
                 </div>
             </div>
             <div class="w-full md:w-80 aspect-square rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center p-6 text-zinc-500">
@@ -30,7 +35,7 @@
         </section>
 
         <!-- Active Promotions Banner (If Any) -->
-        @if($promotions->isNotEmpty())
+        @if(($promotions ?? collect())->isNotEmpty())
             <section class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-bold tracking-tight text-white">Promosi Spesial</h2>
@@ -47,7 +52,7 @@
                             </div>
                             @if($promo->imageUrl())
                                 <div class="h-36 rounded-xl overflow-hidden border border-zinc-800">
-                                    <img src="{{ $promo->imageUrl() }}" alt="{{ $promo->title }}" class="w-full h-full object-cover">
+                                    <img src="{{ $promo->imageUrl() }}" alt="{{ $promo->title }}" loading="lazy" class="w-full h-full object-cover">
                                 </div>
                             @endif
                         </div>
@@ -57,7 +62,7 @@
         @endif
 
         <!-- Active Categories Section -->
-        @if($categories->isNotEmpty())
+        @if(($categories ?? collect())->isNotEmpty())
             <section class="space-y-4">
                 <h2 class="text-xl font-bold tracking-tight text-white">Kategori Pilihan</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -85,7 +90,7 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                @forelse($featuredProducts as $product)
+                @forelse($featuredProducts ?? collect() as $product)
                     <div class="glass-card rounded-2xl overflow-hidden flex flex-col justify-between border border-zinc-800 group">
                         <div class="aspect-square bg-zinc-900 border-b border-zinc-800 relative overflow-hidden">
                             <x-product-image :src="$product->imageUrl()" :alt="$product->name" />
@@ -132,6 +137,21 @@
                         Belum ada produk aktif yang tersedia saat ini.
                     </div>
                 @endforelse
+            </div>
+        </section>
+
+        <!-- Bottom CTA Section -->
+        <section class="rounded-3xl glass-surface border border-zinc-800 p-8 md:p-12 text-center space-y-4">
+            <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                Temukan Perangkat Apple Pilihan Anda
+            </h2>
+            <p class="text-sm text-zinc-400 max-w-xl mx-auto">
+                Bandingkan unit Baru dan Second terinspeksi secara transparan dalam satu katalog.
+            </p>
+            <div class="pt-2 flex justify-center gap-3">
+                <x-ui.button href="{{ route('catalog.index') }}" variant="primary">
+                    Belanja Sekarang
+                </x-ui.button>
             </div>
         </section>
     </div>

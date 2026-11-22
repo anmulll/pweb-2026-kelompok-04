@@ -23,21 +23,35 @@ use Illuminate\Support\Facades\Route;
 | 1. Public Storefront Routes
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
-Route::get('/products/{id}', [CatalogController::class, 'show'])->name('products.show');
+
+Route::get('/catalog', [CatalogController::class, 'index'])
+    ->name('catalog.index');
+
+Route::get('/products', function () {
+    return redirect()->route('catalog.index');
+})->name('products');
+
+Route::get('/products/{id}', [CatalogController::class, 'show'])
+    ->name('products.show');
 
 /*
 |--------------------------------------------------------------------------
 | 2. Authentication Routes
 |--------------------------------------------------------------------------
 */
+
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::get('/register', [RegisteredUserController::class, 'create'])
+        ->name('register');
+
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('throttle:10,1');
 
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+        ->name('login');
+
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:10,1');
 });
@@ -51,25 +65,26 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 | 3. Buyer Routes (RBAC Protected: role:buyer)
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('buyer')
     ->name('buyer.')
     ->middleware(['auth', 'role:buyer'])
     ->group(function () {
         Route::get('/dashboard', function () {
-            return response('Buyer Dashboard', 200);
+            return view('buyer.dashboard');
         })->name('dashboard');
 
         // Profile
         Route::get('/profile', [BuyerProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
 
-        // Cart
+        // Persistent Cart
         Route::get('/cart', [BuyerCartController::class, 'index'])->name('cart.index');
         Route::post('/cart', [BuyerCartController::class, 'store'])->name('cart.store');
         Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->name('cart.update');
         Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->name('cart.destroy');
 
-        // Checkout
+        // Two-Phase Checkout
         Route::get('/checkout', [BuyerCheckoutController::class, 'index'])->name('checkout.index');
         Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->name('checkout.store');
 
@@ -92,6 +107,7 @@ Route::prefix('buyer')
 | 4. Seller Routes (RBAC Protected: role:seller)
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('seller')
     ->name('seller.')
     ->middleware(['auth', 'role:seller'])

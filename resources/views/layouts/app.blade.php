@@ -1,93 +1,162 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'iStore — Retailer Independen Apple' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        canvas: '#09090B',
-                        surface: '#111113',
-                        elevated: '#18181B',
-                        border: '#27272A',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { background-color: #09090B; color: #F4F4F5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .glass-surface { background: rgba(17, 17, 19, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .glass-card { background: #111113; border: 1px solid #27272A; transition: all 0.2s ease-in-out; }
-        .glass-card:hover { border-color: #3F3F46; transform: translateY(-2px); }
-    </style>
+
+    <title>@yield('title', $title ?? 'iStore — Retailer Independen Apple')</title>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen flex flex-col bg-canvas text-zinc-100 antialiased">
-    <!-- Navbar -->
-    <header class="sticky top-0 z-50 glass-surface border-b border-border">
-        <div class="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
-            <a href="{{ route('home') }}" class="flex items-center gap-2 text-xl font-bold tracking-tight text-white">
-                <span class="text-blue-500"></span> iStore
+
+<body class="flex min-h-screen flex-col bg-white text-gray-900 antialiased">
+
+    {{-- Navbar --}}
+    <header class="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
+        <nav class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+
+            {{-- Logo --}}
+            <a href="{{ route('home') }}"
+               class="text-xl font-bold tracking-tight text-gray-900">
+                iStore
             </a>
-            <nav class="hidden md:flex items-center gap-6 text-sm text-zinc-300">
-                <a href="{{ route('home') }}" class="hover:text-white transition">Beranda</a>
-                <a href="{{ route('catalog.index') }}" class="hover:text-white transition">Katalog Perangkat</a>
-                <a href="{{ route('catalog.index', ['condition' => 'used']) }}" class="hover:text-white transition">Unit Second Terinspeksi</a>
-            </nav>
-            <div class="flex items-center gap-3">
+
+            {{-- Navigation --}}
+            <div class="flex flex-wrap items-center gap-4 text-sm sm:gap-6">
+
+                <a href="{{ route('home') }}"
+                   class="text-gray-700 transition hover:text-black">
+                    Beranda
+                </a>
+
+                <a href="{{ route('catalog.index') }}"
+                   class="text-gray-700 transition hover:text-black">
+                    Katalog
+                </a>
+
+                <a href="{{ route('catalog.index', ['condition' => 'used']) }}"
+                   class="hidden text-gray-700 transition hover:text-black md:inline">
+                    Unit Second
+                </a>
+
+                {{-- Guest --}}
+                @guest
+                    <a href="{{ route('login') }}"
+                       class="text-gray-700 transition hover:text-black">
+                        Masuk
+                    </a>
+
+                    <a href="{{ route('register') }}"
+                       class="rounded-full bg-black px-4 py-2 text-white transition hover:bg-gray-800">
+                        Daftar
+                    </a>
+                @endguest
+
+                {{-- Authenticated User --}}
                 @auth
-                    @if(auth()->user()->isSeller())
-                        <a href="{{ route('seller.products.index') }}" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-white transition border border-zinc-700">Panel Seller</a>
+                    {{-- Buyer --}}
+                    @if (auth()->user()->isBuyer())
+                        <a href="{{ route('buyer.dashboard') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Dashboard
+                        </a>
+
+                        <a href="{{ route('buyer.orders.index') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Pesanan
+                        </a>
+
+                        <a href="{{ route('buyer.cart.index') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Keranjang
+                        </a>
+
+                        <a href="{{ route('buyer.profile') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Profil
+                        </a>
                     @endif
-                @else
-                    <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white transition">Masuk</a>
+
+                    {{-- Seller --}}
+                    @if (auth()->user()->isSeller())
+                        <a href="{{ route('seller.dashboard') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Dashboard
+                        </a>
+
+                        <a href="{{ route('seller.products.index') }}"
+                           class="text-gray-700 transition hover:text-black">
+                            Panel Seller
+                        </a>
+                    @endif
+
+                    {{-- User Name --}}
+                    <span class="hidden font-medium text-gray-700 sm:inline">
+                        {{ auth()->user()->name }}
+                    </span>
+
+                    {{-- Logout --}}
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+
+                        <button type="submit"
+                                class="rounded-full border border-gray-300 px-4 py-2 text-gray-800 transition hover:bg-gray-100">
+                            Keluar
+                        </button>
+                    </form>
                 @endauth
+
             </div>
-        </div>
+        </nav>
     </header>
 
-    <!-- Main Content -->
+    {{-- Main Content --}}
     <main class="flex-grow">
-        @if(session('success'))
-            <div class="max-w-[1200px] mx-auto px-4 pt-4">
-                <div class="p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-sm">
+        @if (session('success'))
+            <div class="mx-auto max-w-7xl px-6 pt-4">
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
                     {{ session('success') }}
                 </div>
             </div>
         @endif
-        @if($errors->any())
-            <div class="max-w-[1200px] mx-auto px-4 pt-4">
-                <div class="p-4 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-sm">
-                    <ul class="list-disc pl-5 space-y-1">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
+
+        @if (session('warning'))
+            <div class="mx-auto max-w-7xl px-6 pt-4">
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {{ session('warning') }}
                 </div>
             </div>
         @endif
 
-        {{ $slot }}
+        @if (session('error'))
+            <div class="mx-auto max-w-7xl px-6 pt-4">
+                <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                    {{ session('error') }}
+                </div>
+            </div>
+        @endif
+
+        @hasSection('content')
+            @yield('content')
+        @else
+            {{ $slot ?? '' }}
+        @endif
     </main>
 
-    <!-- Footer with Mandatory Independent Retailer Disclaimer -->
-    <footer class="mt-16 border-t border-border bg-surface/50 text-zinc-400 text-xs py-8">
-        <div class="max-w-[1200px] mx-auto px-4 text-center space-y-3">
-            <p class="font-medium text-zinc-300">
-                iStore — Retailer Independen Perangkat Apple Baru & Second Terinspeksi
+    {{-- Footer with Mandatory Independent Retailer Disclaimer --}}
+    <footer class="mt-16 border-t border-gray-200 bg-gray-50 py-8">
+        <div class="mx-auto max-w-7xl space-y-2 px-6 text-center text-xs text-gray-500">
+            <p class="font-medium text-gray-700">
+                iStore — Retailer Independen Perangkat Apple Baru &amp; Second Terinspeksi
             </p>
-            <p class="text-zinc-500 max-w-2xl mx-auto leading-relaxed">
+            <p class="mx-auto max-w-2xl leading-relaxed">
                 iStore adalah retailer independen perangkat Apple, bukan Apple Store resmi, dan tidak berafiliasi dengan Apple Inc. Seluruh merek dagang dan hak cipta milik Apple Inc.
             </p>
-            <p class="text-zinc-600">
+            <p>
                 &copy; {{ date('Y') }} iStore. Hak cipta dilindungi undang-undang.
             </p>
         </div>
     </footer>
+
 </body>
 </html>
