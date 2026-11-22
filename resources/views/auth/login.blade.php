@@ -23,57 +23,79 @@
         {{-- Login Card --}}
         <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
 
-            {{-- Email --}}
-            <div class="mb-5">
-                <x-input
-                    label="Email Address"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                />
-            </div>
+            {{-- Validation Errors --}}
+            @if ($errors->any())
+                <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <ul class="list-inside list-disc space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-            {{-- Password --}}
-            <div class="mb-5">
-                <x-input
-                    label="Password"
-                    name="password"
-                    type="password"
-                    placeholder="Enter your password"
-                />
-            </div>
+            {{-- Login Form --}}
+            <form method="POST" action="{{ route('login') }}">
+                @csrf
 
-            {{-- Remember & Forgot --}}
-            <div class="mb-6 flex items-center justify-between text-sm">
+                {{-- Email --}}
+                <div class="mb-5">
+                    <x-input
+                        label="Email Address"
+                        name="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value="{{ old('email') }}"
+                        required
+                        autofocus
+                        autocomplete="username"
+                    />
+                </div>
 
-                <label class="flex items-center gap-2 text-gray-600">
-                    <input
-                        type="checkbox"
-                        class="rounded border-gray-300"
-                    >
-                    Remember me
-                </label>
+                {{-- Password --}}
+                <div class="mb-5">
+                    <x-input
+                        label="Password"
+                        name="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                    />
+                </div>
 
-                <a href="#" class="text-gray-900 hover:underline">
-                    Forgot password?
-                </a>
+                {{-- Remember Me --}}
+                <div class="mb-6 flex items-center justify-between text-sm">
 
-            </div>
+                    <label class="flex items-center gap-2 text-gray-600">
+                        <input
+                            type="checkbox"
+                            name="remember"
+                            value="1"
+                            @checked(old('remember'))
+                            class="rounded border-gray-300"
+                        >
+                        Remember me
+                    </label>
 
-            {{-- Login Button --}}
-            <button
-                type="button"
-                class="w-full rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
-            >
-                Sign In
-            </button>
+                </div>
+
+                {{-- Login Button --}}
+                <button
+                    type="submit"
+                    class="w-full rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+                >
+                    Sign In
+                </button>
+
+            </form>
 
             {{-- Register Link --}}
             <div class="mt-6 text-center text-sm text-gray-500">
 
                 Don't have an account?
 
-                <a href="/register" class="font-medium text-black hover:underline">
+                <a href="{{ route('register') }}" class="font-medium text-black hover:underline">
                     Create account
                 </a>
 

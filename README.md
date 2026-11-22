@@ -1,66 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# iStore — Toko Online Perangkat Apple (Laravel 12)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**iStore** adalah aplikasi web e-commerce single-seller berbasis Laravel 12 untuk retailer independen perangkat Apple (iPhone, MacBook, iPad, Apple Watch, AirPods, dan aksesori) yang menjual **produk Baru (New)** maupun **unit Second (Used) terinspeksi**.
 
-## About Laravel
+> **Disclaimer:** iStore adalah retailer independen perangkat Apple, bukan Apple Store resmi, dan tidak berafiliasi dengan Apple Inc.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Teknologi Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Backend:** PHP 8.3+, Laravel 12, Blade, Layered MVC + Domain Service Layer
+- **Database:** MySQL 8.4 (InnoDB, `utf8mb4_unicode_ci`)
+- **Frontend:** Tailwind CSS v4 (`@tailwindcss/vite`), Vite 6, Chart.js 4
+- **PDF & Storage:** `barryvdh/laravel-dompdf` (^3.1), `league/flysystem-aws-s3-v3` (^3.35)
+- **Payment Gateway:** DOKU Checkout Sandbox (Single Gateway, HMAC-SHA256)
+- **Pengujian:** PHPUnit (`php artisan test`)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Fitur Utama
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **Storefront Publik:** Beranda, katalog dengan pencarian/filter/sort/pagination, aturan visibilitas produk aktif (`SD-01`), dan panel inspeksi unit Second (Grade A/B/C, Kesehatan Baterai, Status Fungsi, Catatan Kekurangan, Kelengkapan, Garansi).
+- **Autentikasi & RBAC:** Registrasi publik khusus `buyer`, login/logout terproteksi rate-limit (`throttle:10,1`), middleware `role:buyer` & `role:seller`, isolasi akses HTTP `403` lintas peran.
+- **Keranjang Belanja & Two-Phase Checkout:** Persistent cart per Buyer, validasi stok/harga server-side, pemesanan atomik, dan integrasi pembayaran DOKU Checkout Sandbox + auto-refresh status.
+- **Panel Seller & Analitik:** Dashboard KPI & grafik Chart.js, CRUD Kategori/Produk/Promosi, manajemen pesanan (proses, input resi/kirim, batal dengan restock idempoten), catatan pembayaran read-only, serta laporan penjualan & ekspor PDF.
+- **Media Storage Scalable:** Mendukung penyimpanan lokal (`MEDIA_DISK=public`) untuk development dan Object Storage (`r2`/`s3`) untuk production.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Prasyarat Lingkungan
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Komponen | Versi Disarankan |
+| --- | --- |
+| PHP | 8.3.x (`pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `curl`, `xml`, `bcmath`, `intl`) |
+| Composer | 2.x |
+| Database | MySQL 8.4.x |
+| Node.js / npm | Node 20+ / npm 10+ |
+| Git | 2.x |
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## Prosedur Clone & Instalasi Lokal
 
-## Contributing
+1. **Clone repository kelompok:**
+   ```bash
+   git clone https://github.com/anmulll/pweb-2026-kelompok-04.git
+   cd pweb-2026-kelompok-04
+   git switch develop
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+2. **Install dependensi backend & frontend:**
+   ```bash
+   composer install
+   npm install
+   ```
 
-## Code of Conduct
+3. **Konfigurasi environment:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   Sesuaikan kredensial database lokal (`DB_DATABASE=istore_dev`, `DB_USERNAME`, `DB_PASSWORD`) pada file `.env`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+4. **Jalankan migrasi (dan seeder saat tersedia) serta storage link:**
+   ```bash
+   php artisan migrate
+   php artisan storage:link
+   ```
 
-## Security Vulnerabilities
+5. **Build aset dan jalankan server lokal:**
+   ```bash
+   npm run build
+   php artisan serve
+   ```
+   Atau jalankan server development sekaligus:
+   ```bash
+   npm run dev
+   ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Catatan DOKU Checkout Sandbox
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- Sistem dikunci pada mode Sandbox (`PAYMENT_GATEWAY=doku_sandbox`, `DOKU_IS_PRODUCTION=false`).
+- Isi `DOKU_CLIENT_ID` dan `DOKU_SECRET_KEY` hanya pada file `.env` lokal masing-masing.
+- **Jangan pernah** meng-commit `.env`, `vendor/`, `node_modules/`, kredensial DOKU, atau file database lokal ke repository Git.
+
+---
+
+## Akun Demo
+
+Akun demo (Buyer & Seller) disediakan melalui database seeder tim (akan diperbarui setelah seeder final di-merge ke `develop`). Registrasi publik melalui `/register` selalu membuat akun dengan peran `buyer`.
+
+---
+
+## Menjalankan Pengujian
+
+```bash
+php artisan test
+```
+
+Untuk memeriksa kebersihan diff sebelum commit:
+```bash
+git diff --check
+```
+
+---
+
+## Kontrak Route & Field Auth (Koordinasi Frontend)
+
+| Endpoint | Method | Middleware | Nama Route | Field Form |
+| --- | --- | --- | --- | --- |
+| `/register` | GET / POST | `guest` (+ `throttle:10,1` pada POST) | `register` | `name`, `email`, `phone` (opsional), `address` (opsional), `password`, `password_confirmation` |
+| `/login` | GET / POST | `guest` (+ `throttle:10,1` pada POST) | `login` | `email`, `password`, `remember` (opsional) |
+| `/logout` | POST | `auth` | `logout` | `@csrf` |
+| `/buyer/dashboard` | GET | `auth`, `role:buyer` | `buyer.dashboard` | — |
+| `/seller/dashboard` | GET | `auth`, `role:seller` | `seller.dashboard` | — |
+
+---
+
+## Alur Kerja Git & Kolaborasi
+
+- `main`: Branch rilis terlindungi (wajib Pull Request dari `develop` + review).
+- `develop`: Branch integrasi utama.
+- `feature/<nama-fitur>`: Branch kerja masing-masing anggota, di-merge ke `develop` melalui Pull Request dengan minimal 1 reviewer.
+
+---
+
+## Checklist Deployment / Staging
+
+1. Set `APP_ENV=production`, `APP_DEBUG=false`, dan `APP_URL=https://domain-anda.com`.
+2. Konfigurasikan database dedicated MySQL 8.4 dan jalankan `php artisan migrate --force`.
+3. Jalankan `php artisan storage:link` (atau set `MEDIA_DISK=r2`/`s3` jika memakai Object Storage).
+4. Jalankan optimasi build & cache:
+   ```bash
+   npm run build
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   ```
+
+---
+
+## Anggota Tim & Peran
+
+| Anggota | Peran |
+| --- | --- |
+| `anmul` | Project Manager + Documentation & DevOps (Bootstrap, Auth & RBAC) |
+| `putri` | Reviewer Utama & QA / Integrasi |
+| `gizalda` | Frontend UI (Auth Views, Storefront & Blade Components) |
+| `adel` | Database & Backend |
+| `caca` | Backend & Routing |
