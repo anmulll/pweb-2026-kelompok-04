@@ -17,7 +17,6 @@ class EnsureUserHasRole
     {
         $user = $request->user();
 
-        // Handle unauthenticated users.
         if ($user === null) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -28,16 +27,12 @@ class EnsureUserHasRole
             return redirect()->guest(route('login', [], false));
         }
 
-        // Normalize the user's role into a string value.
-        $userRole = $user->role instanceof \BackedEnum
-            ? $user->role->value
-            : (string) $user->role;
-
-        // Allow access if the user has one of the required roles.
-        if (! in_array($userRole, $roles, true)) {
-            abort(403, 'Anda tidak memiliki izin untuk mengakses halaman ini.');
+        foreach ($roles as $role) {
+            if ($user->hasRole($role)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(403, 'Anda tidak memiliki izin untuk mengakses halaman ini.');
     }
 }

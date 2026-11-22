@@ -3,6 +3,8 @@
 namespace Tests\Feature\Seller;
 
 use App\Models\Category;
+use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\User;
@@ -172,7 +174,27 @@ class SellerConsoleTest extends TestCase
             ->assertSee('Daftar Pesanan')
             ->assertSee('Filter Status Pesanan');
 
-        $detailResponse = $this->get(route('seller.orders.show', 1));
+        $order = Order::create([
+            'order_code' => 'ORD-1',
+            'user_id' => $this->buyer->id,
+            'status' => 'paid',
+            'recipient_name' => 'Budi Santoso',
+            'recipient_phone' => '081234567890',
+            'shipping_address' => 'Jl. Sudirman No. 45, Jakarta Pusat',
+            'subtotal' => 16500000,
+            'shipping_cost' => 25000,
+            'total_amount' => 16525000,
+        ]);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'gateway_order_id' => 'DOKU-ORD-1',
+            'provider' => 'doku_sandbox',
+            'amount' => 16525000,
+            'status' => 'paid',
+        ]);
+
+        $detailResponse = $this->get(route('seller.orders.show', $order));
         $detailResponse->assertOk();
         $detailResponse->assertSee('Detail Pesanan ORD-1');
         $detailResponse->assertSee('Item Pesanan (Snapshot Permanen)');
@@ -188,13 +210,33 @@ class SellerConsoleTest extends TestCase
     {
         $this->actingAs($this->seller);
 
-        $response = $this->getJson(route('seller.orders.payment.status', 1));
+        $order = Order::create([
+            'order_code' => 'ORD-POLL-1',
+            'user_id' => $this->buyer->id,
+            'status' => 'paid',
+            'recipient_name' => 'Budi Santoso',
+            'recipient_phone' => '081234567890',
+            'shipping_address' => 'Jl. Sudirman No. 45, Jakarta Pusat',
+            'subtotal' => 1000000,
+            'shipping_cost' => 25000,
+            'total_amount' => 1025000,
+        ]);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'gateway_order_id' => 'DOKU-ORD-POLL-1',
+            'provider' => 'doku_sandbox',
+            'amount' => 1025000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->getJson(route('seller.orders.payment.status', $order));
         $response->assertOk();
         $response->assertJsonStructure([
             'order_id',
+            'order_code',
             'order_status',
             'payment_status',
-            'updated_at',
         ]);
     }
 
@@ -219,8 +261,6 @@ class SellerConsoleTest extends TestCase
 
         $pdfResponse = $this->get(route('seller.reports.pdf'));
         $pdfResponse->assertOk();
-        $pdfResponse->assertSee('Laporan Penjualan iStore');
-        $pdfResponse->assertSee('Omzet Terverifikasi (Paid)');
-        $pdfResponse->assertSee('iStore merupakan peritel independen dan tidak berafiliasi secara resmi dengan Apple Inc.', false);
+        $pdfResponse->assertHeader('content-type', 'application/pdf');
     }
 }

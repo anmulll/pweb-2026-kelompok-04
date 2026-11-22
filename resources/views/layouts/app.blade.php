@@ -61,7 +61,7 @@
                             Dashboard
                         </a>
 
-                        <a href="{{ route('buyer.orders') }}"
+                        <a href="{{ route('buyer.orders.index') }}"
                            class="text-gray-700 transition hover:text-black">
                             Pesanan
                         </a>

@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\DokuWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// API endpoints (e.g., POST /api/payments/doku/notification) will be registered here.
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/payments/doku/notification', [DokuWebhookController::class, 'handle'])
+    ->name('api.payments.doku.notification');

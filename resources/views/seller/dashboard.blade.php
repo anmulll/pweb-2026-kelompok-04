@@ -26,10 +26,11 @@
 
     @php
         // Nilai KPI berasal langsung dari controller / ReportService (tidak dihitung ulang di Blade atau JS)
-        $verifiedRevenue = $verifiedRevenue ?? ($kpis['verified_revenue'] ?? 0);
+        $verifiedRevenue = $verifiedRevenue ?? ($totalRevenue ?? ($kpis['verified_revenue'] ?? 0));
         $totalOrders = $totalOrders ?? ($kpis['total_orders'] ?? 0);
         $activeProducts = $activeProducts ?? ($kpis['active_products'] ?? 0);
-        $lowStockProducts = $lowStockProducts ?? ($kpis['low_stock_products'] ?? 0);
+        $lowStockRaw = $lowStockProducts ?? ($kpis['low_stock_products'] ?? 0);
+        $lowStockProducts = $lowStockRaw instanceof \Countable ? $lowStockRaw->count() : (int) $lowStockRaw;
 
         // Dataset grafik berasal dari ReportService
         $chartLabels = $chartLabels ?? ($chartData['labels'] ?? []);

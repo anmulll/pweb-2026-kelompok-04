@@ -1,7 +1,9 @@
 @php
     $orderNumber = $order->order_number ?? ($order->order_code ?? ($order->code ?? ('#' . ($order->id ?? ''))));
-    $orderStatus = strtolower((string) ($order->status ?? 'pending_payment'));
-    $paymentStatus = strtolower((string) ($order->payment_status ?? ($order->payment->status ?? 'pending')));
+    $rawOrderStatus = $order->status ?? 'pending_payment';
+    $orderStatus = strtolower($rawOrderStatus instanceof \BackedEnum ? $rawOrderStatus->value : (string) $rawOrderStatus);
+    $rawPaymentStatus = $order->payment_status ?? ($order->payment->status ?? 'pending');
+    $paymentStatus = strtolower($rawPaymentStatus instanceof \BackedEnum ? $rawPaymentStatus->value : (string) $rawPaymentStatus);
 
     $buyerName = $order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? '-'));
     $buyerEmail = $order->buyer_email ?? ($order->user->email ?? '-');

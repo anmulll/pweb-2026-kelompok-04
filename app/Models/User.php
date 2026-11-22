@@ -11,22 +11,38 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'phone',
-        'address',
+        'default_shipping_address',
         'role',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -48,11 +64,30 @@ class User extends Authenticatable
 
     public function hasRole(UserRole|string $role): bool
     {
-        $expected = $role instanceof UserRole
-            ? $role->value
-            : $role;
+        $roleValue = is_string($role) ? strtolower($role) : $role->value;
+        $userRoleValue = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
 
-        return $this->role?->value === $expected;
+        return $userRoleValue === $roleValue;
+    }
+
+    public function getAddressAttribute(): ?string
+    {
+        return $this->default_shipping_address;
+    }
+
+    public function setAddressAttribute(?string $value): void
+    {
+        $this->attributes['default_shipping_address'] = $value;
+    }
+
+    public function getPhoneNumberAttribute(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhoneNumberAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = $value;
     }
 
     public function orders(): HasMany
