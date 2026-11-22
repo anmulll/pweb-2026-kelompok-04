@@ -3,7 +3,9 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Buyer\ProfileController;
 use Illuminate\Support\Facades\Route;
+
 
 // Public Storefront
 Route::get('/', function () {
@@ -42,9 +44,24 @@ Route::prefix('buyer')
     ->name('buyer.')
     ->middleware(['auth', 'role:buyer'])
     ->group(function () {
+
         Route::get('/dashboard', function () {
-            return response('Buyer Dashboard', 200);
+            return view('buyer.dashboard');
         })->name('dashboard');
+
+        // Buyer Profile
+        Route::get('/profile', function () {
+            return view('buyer.profile');
+        })->name('profile');
+
+        // Update Buyer Profile
+        Route::put('/profile', [ProfileController::class, 'update'])
+            ->name('profile.update');
+
+        Route::get('/orders', function () {
+             return view('buyer.orders');
+        })->name('orders');
+
     });
 
 // Seller Dashboard
@@ -56,3 +73,5 @@ Route::prefix('seller')
             return response('Seller Dashboard', 200);
         })->name('dashboard');
     });
+
+
