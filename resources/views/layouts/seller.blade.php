@@ -136,6 +136,18 @@
                         </div>
                     @endif
 
+                    @if (session('success'))
+                        <div class="mb-6 rounded-2xl glass-surface bg-emerald-950/40 border border-emerald-500/30 px-4 py-3 text-sm text-emerald-200" role="status">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="mb-6 rounded-2xl glass-surface bg-rose-950/40 border border-rose-500/30 px-4 py-3 text-sm text-rose-200" role="alert">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+
                     {{ $slot }}
                 </main>
 

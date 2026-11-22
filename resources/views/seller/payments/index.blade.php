@@ -62,7 +62,7 @@
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
                                     <div class="inline-flex items-center justify-end gap-2">
                                         @if ($syncRouteName)
-                                            <form method="POST" action="{{ route($syncRouteName, $payment) }}" class="m-0">
+                                            <form method="POST" action="{{ route($syncRouteName, $payment->id ?? $payment) }}" class="m-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button
@@ -76,7 +76,7 @@
 
                                         @if (Route::has('seller.orders.show') && !empty($payment->order))
                                             <a
-                                                href="{{ route('seller.orders.show', $payment->order) }}"
+                                                href="{{ route('seller.orders.show', $payment->order->id ?? ($payment->order_id ?? $payment->order)) }}"
                                                 class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
                                             >
                                                 Pesanan

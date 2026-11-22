@@ -64,7 +64,7 @@
                                     <div class="flex flex-wrap items-center justify-end gap-2">
                                         {{-- Toggle Aktif / Nonaktif --}}
                                         @if (Route::has('seller.categories.toggle'))
-                                            <form method="POST" action="{{ route('seller.categories.toggle', $category) }}" class="m-0">
+                                            <form method="POST" action="{{ route('seller.categories.toggle', $category->id ?? $category) }}" class="m-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button
@@ -79,7 +79,7 @@
                                         {{-- Ubah --}}
                                         @if (Route::has('seller.categories.edit'))
                                             <a
-                                                href="{{ route('seller.categories.edit', $category) }}"
+                                                href="{{ route('seller.categories.edit', $category->id ?? $category) }}"
                                                 class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
                                             >
                                                 Ubah
@@ -90,7 +90,7 @@
                                         @if (Route::has('seller.categories.destroy'))
                                             <form
                                                 method="POST"
-                                                action="{{ route('seller.categories.destroy', $category) }}"
+                                                action="{{ route('seller.categories.destroy', $category->id ?? $category) }}"
                                                 onsubmit="return confirm('Yakin ingin menghapus kategori ini? Tindakan ini tidak dapat dibatalkan.');"
                                                 class="m-0"
                                             >

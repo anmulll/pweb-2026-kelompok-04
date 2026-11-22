@@ -2,7 +2,7 @@
     $isEdit = isset($promotion) && !empty($promotion->id);
     $pageTitle = $isEdit ? 'Ubah Promosi' : 'Tambah Promosi';
     $formAction = $isEdit
-        ? (Route::has('seller.promotions.update') ? route('seller.promotions.update', $promotion) : '#')
+        ? (Route::has('seller.promotions.update') ? route('seller.promotions.update', $promotion->id ?? $promotion) : '#')
         : (Route::has('seller.promotions.store') ? route('seller.promotions.store') : '#');
 
     $rawStart = $promotion->start_date ?? ($promotion->starts_at ?? null);
@@ -16,13 +16,16 @@
         'end_date',
         $rawEnd ? \Illuminate\Support\Carbon::parse($rawEnd)->format('Y-m-d') : ''
     );
-    $selectedType = old('discount_type', $promotion->discount_type ?? ($promotion->type ?? 'percentage'));
+
+    $currentImage = $isEdit
+        ? ($promotion->image_url ?? (!empty($promotion->image) ? asset('storage/' . ltrim($promotion->image, '/')) : null))
+        : null;
 @endphp
 
 <x-seller-layout :title="$pageTitle">
     <x-seller.page-header
         :title="$pageTitle"
-        :subtitle="$isEdit ? 'Perbarui detail potongan, periode aktif, dan status promosi.' : 'Buat program promosi baru dengan periode tanggal mulai dan berakhir.'"
+        :subtitle="$isEdit ? 'Perbarui banner promosi, periode tayang, dan status aktif.' : 'Buat program promosi baru untuk ditampilkan pada showcase beranda iStore.'"
     >
         <x-slot:actions>
             @if (Route::has('seller.promotions.index'))
@@ -37,7 +40,7 @@
     </x-seller.page-header>
 
     <div class="glass-surface rounded-2xl p-5 sm:p-6 max-w-3xl">
-        <form method="POST" action="{{ $formAction }}" class="space-y-6">
+        <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @if ($isEdit)
                 @method('PUT')
@@ -45,7 +48,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {{-- Nama Promosi --}}
-                <div>
+                <div class="md:col-span-2">
                     <label for="name" class="block text-sm font-medium text-zinc-200">
                         Nama Promosi <span class="text-rose-400">*</span>
                     </label>
@@ -55,7 +58,7 @@
                         name="name"
                         value="{{ old('name', $promotion->name ?? ($promotion->title ?? '')) }}"
                         required
-                        placeholder="Contoh: Promo Akhir Tahun iStore"
+                        placeholder="Contoh: Promo Spesial Akhir Tahun — Diskon Ekosistem Apple"
                         class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('name') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                     >
                     @error('name')
@@ -63,60 +66,20 @@
                     @enderror
                 </div>
 
-                {{-- Kode Promosi --}}
-                <div>
-                    <label for="code" class="block text-sm font-medium text-zinc-200">
-                        Kode Promosi
+                {{-- Slug URL --}}
+                <div class="md:col-span-2">
+                    <label for="slug" class="block text-sm font-medium text-zinc-200">
+                        Slug URL
                     </label>
                     <input
                         type="text"
-                        id="code"
-                        name="code"
-                        value="{{ old('code', $promotion->code ?? '') }}"
-                        placeholder="Contoh: ISTORE26"
-                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('code') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm font-mono uppercase text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                        id="slug"
+                        name="slug"
+                        value="{{ old('slug', $promotion->slug ?? '') }}"
+                        placeholder="Contoh: promo-spesial-akhir-tahun (kosongkan jika dibuat otomatis)"
+                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('slug') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm font-mono text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                     >
-                    @error('code')
-                        <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Jenis Potongan --}}
-                <div>
-                    <label for="discount_type" class="block text-sm font-medium text-zinc-200">
-                        Jenis Potongan <span class="text-rose-400">*</span>
-                    </label>
-                    <select
-                        id="discount_type"
-                        name="discount_type"
-                        required
-                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('discount_type') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400 transition"
-                    >
-                        <option value="percentage" @selected($selectedType === 'percentage')>Persentase (%)</option>
-                        <option value="fixed" @selected($selectedType === 'fixed')>Nominal Tetap (Rp)</option>
-                    </select>
-                    @error('discount_type')
-                        <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Nilai Potongan --}}
-                <div>
-                    <label for="discount_value" class="block text-sm font-medium text-zinc-200">
-                        Nilai Potongan <span class="text-rose-400">*</span>
-                    </label>
-                    <input
-                        type="number"
-                        id="discount_value"
-                        name="discount_value"
-                        min="0"
-                        step="any"
-                        value="{{ old('discount_value', $promotion->discount_value ?? ($promotion->value ?? '')) }}"
-                        required
-                        placeholder="Contoh: 10 atau 500000"
-                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('discount_value') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
-                    >
-                    @error('discount_value')
+                    @error('slug')
                         <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
                     @enderror
                 </div>
@@ -142,7 +105,7 @@
                 {{-- Tanggal Akhir --}}
                 <div>
                     <label for="end_date" class="block text-sm font-medium text-zinc-200">
-                        Tanggal Akhir <span class="text-rose-400">*</span>
+                        Tanggal Berakhir <span class="text-rose-400">*</span>
                     </label>
                     <input
                         type="date"
@@ -156,18 +119,46 @@
                         <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
                     @enderror
                 </div>
+
+                {{-- Banner / Gambar Promosi --}}
+                <div class="md:col-span-2">
+                    <label for="image" class="block text-sm font-medium text-zinc-200">
+                        Banner Promosi {{ $isEdit ? '(opsional jika tidak diganti)' : '' }}
+                    </label>
+                    <input
+                        type="file"
+                        id="image"
+                        name="image"
+                        accept="image/*"
+                        class="mt-1.5 block w-full rounded-xl bg-[#18181B] border @error('image') border-rose-500/70 @else border-white/15 @enderror px-3 py-2 text-xs sm:text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-zinc-100 hover:file:bg-zinc-700 transition"
+                    >
+                    @error('image')
+                        <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
+                    @enderror
+
+                    @if ($currentImage)
+                        <div class="mt-2.5 flex items-center gap-3">
+                            <img
+                                src="{{ $currentImage }}"
+                                alt="{{ $promotion->name ?? 'Banner' }}"
+                                class="h-16 w-32 rounded-lg object-cover border border-white/10"
+                            >
+                            <span class="text-xs text-zinc-400">Banner saat ini terpasang</span>
+                        </div>
+                    @endif
+                </div>
             </div>
 
-            {{-- Deskripsi --}}
+            {{-- Keterangan / Deskripsi Promosi --}}
             <div>
                 <label for="description" class="block text-sm font-medium text-zinc-200">
-                    Keterangan Promosi
+                    Keterangan &amp; Syarat Promosi
                 </label>
                 <textarea
                     id="description"
                     name="description"
                     rows="3"
-                    placeholder="Catatan syarat &amp; ketentuan promosi untuk pengelolaan internal toko."
+                    placeholder="Tuliskan informasi ringkas mengenai cakupan promosi atau syarat pembelian."
                     class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('description') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                 >{{ old('description', $promotion->description ?? '') }}</textarea>
                 @error('description')
@@ -185,7 +176,7 @@
                         @checked((bool) old('is_active', $promotion->is_active ?? true))
                         class="h-4 w-4 rounded border-white/20 bg-[#18181B] text-zinc-100 focus:ring-0"
                     >
-                    <span class="text-sm text-zinc-200">Promosi aktif dalam rentang tanggal berlaku</span>
+                    <span class="text-sm text-zinc-200">Tayangkan promosi ini di beranda selama periode tanggal berlaku</span>
                 </label>
                 @error('is_active')
                     <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>

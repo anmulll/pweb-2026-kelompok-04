@@ -2,7 +2,7 @@
     $isEdit = isset($category) && !empty($category->id);
     $pageTitle = $isEdit ? 'Ubah Kategori' : 'Tambah Kategori';
     $formAction = $isEdit
-        ? (Route::has('seller.categories.update') ? route('seller.categories.update', $category) : '#')
+        ? (Route::has('seller.categories.update') ? route('seller.categories.update', $category->id ?? $category) : '#')
         : (Route::has('seller.categories.store') ? route('seller.categories.store') : '#');
 @endphp
 

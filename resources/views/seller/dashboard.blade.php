@@ -104,63 +104,74 @@
     </section>
 
     @if ($hasChartData)
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
         <script>
-            (function () {
-                const canvas = document.getElementById('seller-revenue-chart');
-                if (!canvas || typeof Chart === 'undefined') return;
+            (function initRevenueChart() {
+                function renderChart() {
+                    const canvas = document.getElementById('seller-revenue-chart');
+                    const ChartConstructor = window.Chart;
 
-                let labels = [];
-                let values = [];
+                    if (!canvas || typeof ChartConstructor === 'undefined') {
+                        return false;
+                    }
 
-                try {
-                    labels = JSON.parse(canvas.dataset.labels || '[]');
-                    values = JSON.parse(canvas.dataset.values || '[]');
-                } catch (e) {
-                    return;
-                }
+                    let labels = [];
+                    let values = [];
 
-                if (!Array.isArray(labels) || !Array.isArray(values) || labels.length === 0) {
-                    return;
-                }
+                    try {
+                        labels = JSON.parse(canvas.dataset.labels || '[]');
+                        values = JSON.parse(canvas.dataset.values || '[]');
+                    } catch (e) {
+                        return true;
+                    }
 
-                new Chart(canvas, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Omzet Terverifikasi (Rp)',
-                            data: values,
-                            borderColor: '#f4f4f5',
-                            backgroundColor: 'rgba(244, 244, 245, 0.12)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#ffffff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                labels: { color: '#d4d4d8' }
-                            }
+                    if (!Array.isArray(labels) || !Array.isArray(values) || labels.length === 0) {
+                        return true;
+                    }
+
+                    new ChartConstructor(canvas, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Omzet Terverifikasi (Rp)',
+                                data: values,
+                                borderColor: '#f4f4f5',
+                                backgroundColor: 'rgba(244, 244, 245, 0.12)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 3,
+                                pointBackgroundColor: '#ffffff'
+                            }]
                         },
-                        scales: {
-                            x: {
-                                ticks: { color: '#a1a1aa' },
-                                grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    labels: { color: '#d4d4d8' }
+                                }
                             },
-                            y: {
-                                beginAtZero: true,
-                                ticks: { color: '#a1a1aa' },
-                                grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                            scales: {
+                                x: {
+                                    ticks: { color: '#a1a1aa' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: '#a1a1aa' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+
+                    return true;
+                }
+
+                if (!renderChart()) {
+                    window.addEventListener('DOMContentLoaded', renderChart);
+                }
             })();
         </script>
     @endif

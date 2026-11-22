@@ -72,8 +72,26 @@
                                 </td>
 
                                 {{-- Kondisi --}}
-                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-300">
-                                    {{ $product->condition ?? '-' }}
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs">
+                                    @php
+                                        $condRaw = strtolower((string) ($product->condition ?? 'new'));
+                                        $isUsed = in_array($condRaw, ['used', 'second', 'bekas mulus', 'bekas', 'refurbished'], true);
+                                    @endphp
+                                    @if ($isUsed)
+                                        <div class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                            <span>Second</span>
+                                            @if (!empty($product->condition_grade))
+                                                <span class="font-bold">Grade {{ strtoupper($product->condition_grade) }}</span>
+                                            @endif
+                                        </div>
+                                        @if (!empty($product->battery_health))
+                                            <div class="text-[11px] text-zinc-400 mt-0.5">BH: {{ $product->battery_health }}%</div>
+                                        @endif
+                                    @else
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 font-medium bg-zinc-800 text-zinc-200 border border-white/10">
+                                            Baru
+                                        </span>
+                                    @endif
                                 </td>
 
                                 {{-- Harga --}}
@@ -113,7 +131,7 @@
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2">
                                         @if (Route::has('seller.products.toggle'))
-                                            <form method="POST" action="{{ route('seller.products.toggle', $product) }}" class="m-0">
+                                            <form method="POST" action="{{ route('seller.products.toggle', $product->id ?? $product) }}" class="m-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button
@@ -127,7 +145,7 @@
 
                                         @if (Route::has('seller.products.edit'))
                                             <a
-                                                href="{{ route('seller.products.edit', $product) }}"
+                                                href="{{ route('seller.products.edit', $product->id ?? $product) }}"
                                                 class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
                                             >
                                                 Ubah
@@ -137,7 +155,7 @@
                                         @if (Route::has('seller.products.destroy'))
                                             <form
                                                 method="POST"
-                                                action="{{ route('seller.products.destroy', $product) }}"
+                                                action="{{ route('seller.products.destroy', $product->id ?? $product) }}"
                                                 onsubmit="return confirm('Yakin ingin menghapus produk ini? Data yang dihapus tidak dapat dikembalikan.');"
                                                 class="m-0"
                                             >

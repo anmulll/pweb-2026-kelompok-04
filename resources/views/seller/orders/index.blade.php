@@ -8,8 +8,9 @@
         $items = $orders ?? collect();
         $currentStatus = request('status', $status ?? '');
         $statusOptions = $statusOptions ?? [
-            '' => 'Semua Status',
-            'pending' => 'Menunggu',
+            '' => 'Semua Status Pesanan',
+            'pending_payment' => 'Menunggu Pembayaran',
+            'paid' => 'Dibayar',
             'processing' => 'Diproses',
             'shipped' => 'Dikirim',
             'completed' => 'Selesai',
@@ -24,7 +25,7 @@
             action="{{ Route::has('seller.orders.index') ? route('seller.orders.index') : url()->current() }}"
             class="flex flex-col sm:flex-row sm:items-end gap-3"
         >
-            <div class="w-full sm:w-64">
+            <div class="w-full sm:w-72">
                 <label for="status" class="block text-xs font-medium text-zinc-400 mb-1.5">
                     Filter Status Pesanan
                 </label>
@@ -79,15 +80,47 @@
                     <tbody class="divide-y divide-white/10 text-sm">
                         @foreach ($items as $order)
                             @php
-                                $orderStatus = strtolower((string) ($order->status ?? 'pending'));
+                                $orderStatus = strtolower((string) ($order->status ?? 'pending_payment'));
                                 $paymentStatus = strtolower((string) ($order->payment_status ?? ($order->payment->status ?? 'pending')));
                                 $buyerName = $order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? 'Pembeli'));
                                 $totalAmount = $order->total_amount ?? ($order->total ?? 0);
+
+                                $orderBadgeClass = match ($orderStatus) {
+                                    'paid' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                                    'processing' => 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+                                    'shipped' => 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+                                    'completed' => 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40',
+                                    'cancelled' => 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                                    default => 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                                };
+
+                                $orderLabel = match ($orderStatus) {
+                                    'paid' => 'Dibayar',
+                                    'processing' => 'Diproses',
+                                    'shipped' => 'Dikirim',
+                                    'completed' => 'Selesai',
+                                    'cancelled' => 'Dibatalkan',
+                                    default => 'Menunggu Pembayaran',
+                                };
+
+                                $paymentBadgeClass = match ($paymentStatus) {
+                                    'paid' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                                    'failed', 'expired', 'cancelled' => 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                                    default => 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                                };
+
+                                $paymentLabel = match ($paymentStatus) {
+                                    'paid' => 'Paid',
+                                    'failed' => 'Gagal',
+                                    'expired' => 'Kedaluwarsa',
+                                    'cancelled' => 'Dibatalkan',
+                                    default => 'Pending',
+                                };
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
                                     <div class="font-mono text-xs font-medium text-zinc-100">
-                                        {{ $order->order_number ?? ($order->code ?? ('#' . $order->id)) }}
+                                        {{ $order->order_number ?? ($order->order_code ?? ($order->code ?? ('#' . $order->id))) }}
                                     </div>
                                     @if (!empty($order->created_at))
                                         <div class="text-xs text-zinc-400 mt-0.5">
@@ -101,14 +134,14 @@
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border {{ $paymentStatus === 'paid' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-300 border-white/10' }}">
-                                        {{ $order->payment_status ?? ($order->payment->status ?? 'Pending') }}
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border {{ $paymentBadgeClass }}">
+                                        {{ $paymentLabel }}
                                     </span>
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-200 border border-white/15">
-                                        {{ $order->status ?? 'pending' }}
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border {{ $orderBadgeClass }}">
+                                        {{ $orderLabel }}
                                     </span>
                                 </td>
 
@@ -119,7 +152,7 @@
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
                                     @if (Route::has('seller.orders.show'))
                                         <a
-                                            href="{{ route('seller.orders.show', $order) }}"
+                                            href="{{ route('seller.orders.show', $order->id ?? $order) }}"
                                             class="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
                                         >
                                             Detail
@@ -141,7 +174,7 @@
             <div class="px-4 py-14 text-center">
                 <p class="text-sm font-medium text-zinc-200">Tidak ada pesanan yang ditemukan</p>
                 <p class="mt-1 text-xs text-zinc-400">
-                    Belum ada data pesanan untuk filter atau periode yang dipilih.
+                    Belum ada data pesanan untuk filter status atau periode yang dipilih.
                 </p>
             </div>
         @endif

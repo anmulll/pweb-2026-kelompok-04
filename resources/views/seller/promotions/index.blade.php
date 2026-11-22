@@ -1,7 +1,7 @@
 <x-seller-layout title="Promosi">
     <x-seller.page-header
         title="Promosi & Diskon"
-        subtitle="Atur program potongan harga, kode promo, periode berlaku, dan status aktif promosi."
+        subtitle="Atur banner promosi beranda, periode berlaku, dan status aktif tayang."
     >
         <x-slot:actions>
             @if (Route::has('seller.promotions.create'))
@@ -25,8 +25,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
-                            <th class="py-3.5 px-4 sm:px-6">Program &amp; Kode</th>
-                            <th class="py-3.5 px-4">Potongan</th>
+                            <th class="py-3.5 px-4 sm:px-6">Banner &amp; Program</th>
+                            <th class="py-3.5 px-4">Slug</th>
                             <th class="py-3.5 px-4">Periode Berlaku</th>
                             <th class="py-3.5 px-4">Status</th>
                             <th class="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
@@ -36,8 +36,7 @@
                         @foreach ($items as $promotion)
                             @php
                                 $isActive = (bool) ($promotion->is_active ?? true);
-                                $discountType = $promotion->discount_type ?? $promotion->type ?? 'fixed';
-                                $discountValue = (float) ($promotion->discount_value ?? $promotion->value ?? 0);
+                                $imagePath = $promotion->image_url ?? ($promotion->image ? asset('storage/' . ltrim($promotion->image, '/')) : null);
 
                                 $startDate = !empty($promotion->start_date)
                                     ? \Illuminate\Support\Carbon::parse($promotion->start_date)->format('d M Y')
@@ -49,18 +48,29 @@
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
                                 <td class="py-3.5 px-4 sm:px-6">
-                                    <div class="font-medium text-zinc-100">{{ $promotion->name ?? ($promotion->title ?? '-') }}</div>
-                                    @if (!empty($promotion->code))
-                                        <div class="text-xs font-mono text-zinc-400 mt-0.5">{{ $promotion->code }}</div>
-                                    @endif
+                                    <div class="flex items-center gap-3 min-w-[200px]">
+                                        <div class="h-10 w-16 shrink-0 rounded-lg bg-[#18181B] border border-white/10 overflow-hidden flex items-center justify-center">
+                                            @if ($imagePath)
+                                                <img
+                                                    src="{{ $imagePath }}"
+                                                    alt="{{ $promotion->name }}"
+                                                    class="h-full w-full object-cover"
+                                                >
+                                            @else
+                                                <span class="text-[10px] text-zinc-500">No Banner</span>
+                                            @endif
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="font-medium text-zinc-100 truncate">{{ $promotion->name ?? ($promotion->title ?? '-') }}</div>
+                                            @if (!empty($promotion->description))
+                                                <div class="text-xs text-zinc-400 line-clamp-1 mt-0.5">{{ $promotion->description }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
                                 </td>
 
-                                <td class="py-3.5 px-4 whitespace-nowrap text-zinc-200">
-                                    @if (in_array($discountType, ['percentage', 'percent', 'persen'], true))
-                                        {{ rtrim(rtrim(number_format($discountValue, 2, ',', '.'), '0'), ',') }}%
-                                    @else
-                                        Rp {{ number_format($discountValue, 0, ',', '.') }}
-                                    @endif
+                                <td class="py-3.5 px-4 text-xs font-mono text-zinc-400">
+                                    {{ $promotion->slug ?? '-' }}
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-300">
@@ -82,7 +92,7 @@
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2">
                                         @if (Route::has('seller.promotions.toggle'))
-                                            <form method="POST" action="{{ route('seller.promotions.toggle', $promotion) }}" class="m-0">
+                                            <form method="POST" action="{{ route('seller.promotions.toggle', $promotion->id ?? $promotion) }}" class="m-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button
@@ -96,7 +106,7 @@
 
                                         @if (Route::has('seller.promotions.edit'))
                                             <a
-                                                href="{{ route('seller.promotions.edit', $promotion) }}"
+                                                href="{{ route('seller.promotions.edit', $promotion->id ?? $promotion) }}"
                                                 class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
                                             >
                                                 Ubah
@@ -106,7 +116,7 @@
                                         @if (Route::has('seller.promotions.destroy'))
                                             <form
                                                 method="POST"
-                                                action="{{ route('seller.promotions.destroy', $promotion) }}"
+                                                action="{{ route('seller.promotions.destroy', $promotion->id ?? $promotion) }}"
                                                 onsubmit="return confirm('Yakin ingin menghapus promosi ini? Tindakan ini tidak dapat dibatalkan.');"
                                                 class="m-0"
                                             >
@@ -137,7 +147,7 @@
             <div class="px-4 py-14 text-center">
                 <p class="text-sm font-medium text-zinc-200">Belum ada promosi yang dibuat</p>
                 <p class="mt-1 text-xs text-zinc-400">
-                    Tambahkan program promosi dengan tanggal mulai/akhir dan status aktif atau nonaktif.
+                    Tambahkan banner promosi beranda dengan periode tanggal berlaku dan status aktif tayang.
                 </p>
                 @if (Route::has('seller.promotions.create'))
                     <div class="mt-4">
