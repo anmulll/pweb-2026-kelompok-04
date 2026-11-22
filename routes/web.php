@@ -44,9 +44,13 @@ Route::prefix('seller')
     ->group(function () {
 
         // Dashboard
-        Route::get('/', function () {
+        Route::get('/dashboard', function () {
             return view('seller.dashboard');
         })->name('dashboard');
+
+        Route::get('/', function () {
+            return redirect()->route('seller.dashboard');
+        });
 
         // Kategori
         Route::get('/categories', function () {
@@ -94,8 +98,4 @@ Route::prefix('seller')
             return view('seller.reports.index');
         })->name('reports.index');
 
-        // Seller dashboard dari branch develop (sementara)
-        Route::get('/dashboard', function () {
-            return response('Seller Dashboard', 200);
-        })->name('dashboard-alt');
     });
