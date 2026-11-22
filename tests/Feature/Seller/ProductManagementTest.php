@@ -26,11 +26,11 @@ class ProductManagementTest extends TestCase
         parent::setUp();
 
         $this->seller = User::factory()->create([
-            'role' => UserRole::SELLER,
+            'role' => UserRole::Seller,
         ]);
 
         $this->buyer = User::factory()->create([
-            'role' => UserRole::BUYER,
+            'role' => UserRole::Buyer,
         ]);
 
         $this->category = Category::create([
