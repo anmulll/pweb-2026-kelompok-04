@@ -3,31 +3,44 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProfileService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
-    public function update(Request $request)
+    public function __construct(
+        protected ProfileService $profileService
+    ) {}
+
+    public function show(Request $request)
     {
         $user = $request->user();
 
+        if ($request->wantsJson()) {
+            return response()->json($user);
+        }
+
+        return view('buyer.profile', compact('user'));
+    }
+
+    public function update(Request $request)
+    {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($user->id),
-            ],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'address' => ['nullable', 'string', 'max:1000'],
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:30',
+            'default_shipping_address' => 'nullable|string|max:1000',
+            'address' => 'nullable|string|max:1000',
         ]);
 
-        $user->update($validated);
+        $user = $this->profileService->updateProfile($request->user(), $validated);
 
-        return redirect()
-            ->route('buyer.profile')
-            ->with('success', 'Your profile has been updated successfully!');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Profil berhasil diperbarui.',
+                'user' => $user,
+            ]);
+        }
+
+        return redirect()->route('buyer.profile')->with('success', 'Profil berhasil diperbarui.');
     }
 }

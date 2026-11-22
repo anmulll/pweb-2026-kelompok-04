@@ -2,19 +2,25 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Buyer\CartController;
-use App\Http\Controllers\Buyer\CheckoutController;
-use App\Http\Controllers\Buyer\ProfileController;
+use App\Http\Controllers\Buyer\CartController as BuyerCartController;
+use App\Http\Controllers\Buyer\CheckoutController as BuyerCheckoutController;
+use App\Http\Controllers\Buyer\OrderController as BuyerOrderController;
+use App\Http\Controllers\Buyer\PaymentController as BuyerPaymentController;
+use App\Http\Controllers\Buyer\ProfileController as BuyerProfileController;
 use App\Http\Controllers\Public\CatalogController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Seller\CategoryController as SellerCategoryController;
+use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
+use App\Http\Controllers\Seller\OrderController as SellerOrderController;
+use App\Http\Controllers\Seller\PaymentController as SellerPaymentController;
 use App\Http\Controllers\Seller\ProductController as SellerProductController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
+use App\Http\Controllers\Seller\ReportController as SellerReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Public Storefront Routes
+| 1. Public Storefront Routes
 |--------------------------------------------------------------------------
 */
 
@@ -32,7 +38,7 @@ Route::get('/products/{id}', [CatalogController::class, 'show'])
 
 /*
 |--------------------------------------------------------------------------
-| Authentication Routes
+| 2. Authentication Routes
 |--------------------------------------------------------------------------
 */
 
@@ -56,7 +62,7 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 /*
 |--------------------------------------------------------------------------
-| Buyer Routes
+| 3. Buyer Routes (RBAC Protected: role:buyer)
 |--------------------------------------------------------------------------
 */
 
@@ -68,47 +74,37 @@ Route::prefix('buyer')
             return view('buyer.dashboard');
         })->name('dashboard');
 
-        // Buyer Profile
-        Route::get('/profile', function () {
-            return view('buyer.profile');
-        })->name('profile');
-
-        Route::put('/profile', [ProfileController::class, 'update'])
-            ->name('profile.update');
-
-        // Buyer Orders
-        Route::get('/orders', function () {
-            return view('buyer.orders');
-        })->name('orders');
-
-        Route::get('/orders/{order}', function ($order) {
-            return response("Detail Pesanan {$order}", 200);
-        })->name('orders.show');
+        // Profile
+        Route::get('/profile', [BuyerProfileController::class, 'show'])->name('profile');
+        Route::put('/profile', [BuyerProfileController::class, 'update'])->name('profile.update');
 
         // Persistent Cart
-        Route::get('/cart', [CartController::class, 'index'])
-            ->name('cart.index');
-
-        Route::post('/cart', [CartController::class, 'store'])
-            ->name('cart.store');
-
-        Route::patch('/cart/{cartItem}', [CartController::class, 'update'])
-            ->name('cart.update');
-
-        Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])
-            ->name('cart.destroy');
+        Route::get('/cart', [BuyerCartController::class, 'index'])->name('cart.index');
+        Route::post('/cart', [BuyerCartController::class, 'store'])->name('cart.store');
+        Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->name('cart.update');
+        Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->name('cart.destroy');
 
         // Two-Phase Checkout
-        Route::get('/checkout', [CheckoutController::class, 'index'])
-            ->name('checkout.index');
+        Route::get('/checkout', [BuyerCheckoutController::class, 'index'])->name('checkout.index');
+        Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->name('checkout.store');
 
-        Route::post('/checkout', [CheckoutController::class, 'store'])
-            ->name('checkout.store');
+        // Orders & Cancellation & Confirmation
+        Route::get('/orders', [BuyerOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->name('orders.cancel');
+        Route::post('/orders/{order}/confirm-receipt', [BuyerOrderController::class, 'confirmReceipt'])->name('orders.confirm-receipt');
+
+        // Payment Polling & Actions
+        Route::get('/orders/{order}/payment/status', [BuyerPaymentController::class, 'status'])
+            ->middleware('throttle:30,1')
+            ->name('orders.payment.status');
+        Route::post('/orders/{order}/payment/pay', [BuyerPaymentController::class, 'pay'])->name('orders.payment.pay');
+        Route::post('/orders/{order}/payment/sync', [BuyerPaymentController::class, 'sync'])->name('orders.payment.sync');
     });
 
 /*
 |--------------------------------------------------------------------------
-| Seller Routes
+| 4. Seller Routes (RBAC Protected: role:seller)
 |--------------------------------------------------------------------------
 */
 
@@ -116,35 +112,35 @@ Route::prefix('seller')
     ->name('seller.')
     ->middleware(['auth', 'role:seller'])
     ->group(function () {
-        // Seller Dashboard
-        Route::get('/dashboard', function () {
-            return response('Seller Dashboard', 200);
-        })->name('dashboard');
+        Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
 
-        // Category Management
-        Route::resource('categories', SellerCategoryController::class)
-            ->except(['show']);
+        // Categories CRUD & toggle
+        Route::resource('categories', SellerCategoryController::class)->except(['show']);
+        Route::post('categories/{category}/toggle', [SellerCategoryController::class, 'toggle'])->name('categories.toggle');
 
-        Route::post(
-            'categories/{category}/toggle',
-            [SellerCategoryController::class, 'toggle']
-        )->name('categories.toggle');
+        // Products CRUD & toggle
+        Route::resource('products', SellerProductController::class)->except(['show']);
+        Route::post('products/{product}/toggle', [SellerProductController::class, 'toggle'])->name('products.toggle');
 
-        // Product Management
-        Route::resource('products', SellerProductController::class)
-            ->except(['show']);
+        // Promotions CRUD & toggle
+        Route::resource('promotions', SellerPromotionController::class)->except(['show']);
+        Route::post('promotions/{promotion}/toggle', [SellerPromotionController::class, 'toggle'])->name('promotions.toggle');
 
-        Route::post(
-            'products/{product}/toggle',
-            [SellerProductController::class, 'toggle']
-        )->name('products.toggle');
+        // Orders Management
+        Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [SellerOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/process', [SellerOrderController::class, 'process'])->name('orders.process');
+        Route::post('/orders/{order}/ship', [SellerOrderController::class, 'ship'])->name('orders.ship');
+        Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
 
-        // Promotion Management
-        Route::resource('promotions', SellerPromotionController::class)
-            ->except(['show']);
+        // Payments (Read-Only & Sync & Status)
+        Route::get('/payments', [SellerPaymentController::class, 'index'])->name('payments.index');
+        Route::post('/payments/{order}/sync', [SellerPaymentController::class, 'sync'])->name('payments.sync');
+        Route::get('/orders/{order}/payment/status', [SellerPaymentController::class, 'status'])
+            ->middleware('throttle:30,1')
+            ->name('orders.payment.status');
 
-        Route::post(
-            'promotions/{promotion}/toggle',
-            [SellerPromotionController::class, 'toggle']
-        )->name('promotions.toggle');
+        // Reports & PDF
+        Route::get('/reports', [SellerReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/pdf', [SellerReportController::class, 'pdf'])->name('reports.pdf');
     });

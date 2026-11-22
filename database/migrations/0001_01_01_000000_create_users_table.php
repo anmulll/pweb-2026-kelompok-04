@@ -14,14 +14,9 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-
+            $table->enum('role', ['buyer', 'seller'])->default('buyer')->index();
             $table->string('phone', 30)->nullable();
-            $table->text('address')->nullable();
-
-            $table->enum('role', ['buyer', 'seller'])
-                ->default('buyer')
-                ->index();
-
+            $table->text('default_shipping_address')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

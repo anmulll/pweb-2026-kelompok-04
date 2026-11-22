@@ -7,6 +7,9 @@ enum UserRole: string
     case Buyer = 'buyer';
     case Seller = 'seller';
 
+    public const BUYER = self::Buyer;
+    public const SELLER = self::Seller;
+
     public function label(): string
     {
         return match ($this) {
