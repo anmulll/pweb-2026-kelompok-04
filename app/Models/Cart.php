@@ -21,4 +21,9 @@ class Cart extends Model
     {
         return $this->hasMany(CartItem::class);
     }
+
+    public function totalQuantity(): int
+    {
+        return (int) $this->items()->sum('quantity');
+    }
 }
