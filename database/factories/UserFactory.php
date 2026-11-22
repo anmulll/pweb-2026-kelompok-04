@@ -37,15 +37,8 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Indicate that the model should have the buyer role.
      */
-    public function unverified(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
-    }
-
     public function buyer(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -53,10 +46,23 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Indicate that the model should have the seller role.
+     */
     public function seller(): static
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Seller,
+        ]);
+    }
+
+    /**
+     * Indicate that the model's email address should be unverified.
+     */
+    public function unverified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_verified_at' => null,
         ]);
     }
 }
