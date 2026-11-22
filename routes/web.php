@@ -62,6 +62,10 @@ Route::prefix('buyer')
              return view('buyer.orders');
         })->name('orders');
 
+        Route::get('/cart', function () {
+            return view('buyer.cart');
+        })->name('cart');
+
     });
 
 // Seller Dashboard

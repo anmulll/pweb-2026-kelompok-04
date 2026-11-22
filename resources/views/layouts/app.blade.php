@@ -35,7 +35,7 @@
                     Products
                 </a>
 
-                {{-- Guest Navigation --}}
+                {{-- Guest --}}
                 @guest
                     <a href="{{ route('login') }}"
                        class="hover:text-gray-500">
@@ -48,7 +48,7 @@
                     </a>
                 @endguest
 
-                {{-- Authenticated Navigation --}}
+                {{-- Login --}}
                 @auth
                     @php
                         $userRole = auth()->user()->role->value
@@ -67,6 +67,11 @@
                             Orders
                         </a>
 
+                        <a href="{{ route('buyer.cart') }}"
+                           class="hover:text-gray-500">
+                            Cart
+                        </a>
+
                         <a href="{{ route('buyer.profile') }}"
                            class="hover:text-gray-500">
                             Profile
@@ -81,7 +86,7 @@
                         </a>
                     @endif
 
-                    {{-- User Name --}}
+                    {{-- User --}}
                     <span class="hidden font-medium text-gray-700 sm:inline">
                         {{ auth()->user()->name }}
                     </span>
@@ -98,11 +103,10 @@
                 @endauth
 
             </div>
-
         </nav>
     </header>
 
-    {{-- Main Content --}}
+    {{-- Main --}}
     <main>
         @yield('content')
     </main>
