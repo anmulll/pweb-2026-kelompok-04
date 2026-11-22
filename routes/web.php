@@ -112,30 +112,34 @@ Route::prefix('seller')
     ->name('seller.')
     ->middleware(['auth', 'role:seller'])
     ->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('seller.dashboard');
+        });
+
         Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
 
         // Categories CRUD & toggle
         Route::resource('categories', SellerCategoryController::class)->except(['show']);
-        Route::post('categories/{category}/toggle', [SellerCategoryController::class, 'toggle'])->name('categories.toggle');
+        Route::match(['post', 'patch'], 'categories/{category}/toggle', [SellerCategoryController::class, 'toggle'])->name('categories.toggle');
 
         // Products CRUD & toggle
         Route::resource('products', SellerProductController::class)->except(['show']);
-        Route::post('products/{product}/toggle', [SellerProductController::class, 'toggle'])->name('products.toggle');
+        Route::match(['post', 'patch'], 'products/{product}/toggle', [SellerProductController::class, 'toggle'])->name('products.toggle');
 
         // Promotions CRUD & toggle
         Route::resource('promotions', SellerPromotionController::class)->except(['show']);
-        Route::post('promotions/{promotion}/toggle', [SellerPromotionController::class, 'toggle'])->name('promotions.toggle');
+        Route::match(['post', 'patch'], 'promotions/{promotion}/toggle', [SellerPromotionController::class, 'toggle'])->name('promotions.toggle');
 
         // Orders Management
         Route::get('/orders', [SellerOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [SellerOrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/process', [SellerOrderController::class, 'process'])->name('orders.process');
-        Route::post('/orders/{order}/ship', [SellerOrderController::class, 'ship'])->name('orders.ship');
-        Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
+        Route::match(['post', 'patch'], '/orders/{order}/process', [SellerOrderController::class, 'process'])->name('orders.process');
+        Route::match(['post', 'patch'], '/orders/{order}/ship', [SellerOrderController::class, 'ship'])->name('orders.ship');
+        Route::match(['post', 'patch'], '/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
 
         // Payments (Read-Only & Sync & Status)
         Route::get('/payments', [SellerPaymentController::class, 'index'])->name('payments.index');
-        Route::post('/payments/{order}/sync', [SellerPaymentController::class, 'sync'])->name('payments.sync');
+        Route::match(['post', 'patch'], '/payments/{order}/sync', [SellerPaymentController::class, 'sync'])->name('payments.sync');
         Route::get('/orders/{order}/payment/status', [SellerPaymentController::class, 'status'])
             ->middleware('throttle:30,1')
             ->name('orders.payment.status');

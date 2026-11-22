@@ -32,7 +32,7 @@ class CategoryController extends Controller
     {
         Gate::authorize('create', Category::class);
 
-        return view('seller.categories.create');
+        return view('seller.categories.form');
     }
 
     public function store(StoreCategoryRequest $request): RedirectResponse
@@ -49,7 +49,7 @@ class CategoryController extends Controller
     {
         Gate::authorize('update', $category);
 
-        return view('seller.categories.edit', compact('category'));
+        return view('seller.categories.form', compact('category'));
     }
 
     public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse

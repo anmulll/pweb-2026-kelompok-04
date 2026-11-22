@@ -31,7 +31,7 @@ class PromotionController extends Controller
     {
         Gate::authorize('create', Promotion::class);
 
-        return view('seller.promotions.create');
+        return view('seller.promotions.form');
     }
 
     public function store(StorePromotionRequest $request): RedirectResponse
@@ -52,7 +52,7 @@ class PromotionController extends Controller
     {
         Gate::authorize('update', $promotion);
 
-        return view('seller.promotions.edit', compact('promotion'));
+        return view('seller.promotions.form', compact('promotion'));
     }
 
     public function update(UpdatePromotionRequest $request, Promotion $promotion): RedirectResponse

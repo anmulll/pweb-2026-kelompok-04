@@ -1,110 +1,177 @@
-<x-layouts.seller title="Manajemen Promosi — Seller iStore">
-    <div class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-bold tracking-tight text-white">Manajemen Promosi Toko</h1>
-                <p class="text-xs text-zinc-400">Atur kampanye promosi dan banner diskon untuk pelanggan</p>
-            </div>
-            <x-ui.button href="{{ route('seller.promotions.create') }}" variant="primary">
-                + Tambah Promosi
-            </x-ui.button>
-        </div>
+<x-seller-layout title="Promosi">
+    <x-seller.page-header
+        title="Promosi & Diskon"
+        subtitle="Atur banner promosi beranda, periode berlaku, dan status aktif tayang."
+    >
+        <x-slot:actions>
+            @if (Route::has('seller.promotions.create'))
+                <a
+                    href="{{ route('seller.promotions.create') }}"
+                    class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-950 bg-zinc-100 hover:bg-white transition"
+                >
+                    Tambah Promosi
+                </a>
+            @endif
+        </x-slot:actions>
+    </x-seller.page-header>
 
-        <!-- Promotions Table -->
-        <div class="glass-surface rounded-2xl border border-zinc-800 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-zinc-300">
-                    <thead class="bg-zinc-900/80 border-b border-zinc-800 text-zinc-400 uppercase font-semibold">
-                        <tr>
-                            <th class="py-3.5 px-4">Banner & Judul Promosi</th>
+    @php
+        $items = $promotions ?? collect();
+    @endphp
+
+    <div class="glass-surface rounded-2xl overflow-hidden">
+        @if ($items->count() > 0)
+            <div class="w-full overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
+                            <th class="py-3.5 px-4 sm:px-6">Banner &amp; Program</th>
                             <th class="py-3.5 px-4">Periode Berlaku</th>
                             <th class="py-3.5 px-4">Dibuat Oleh</th>
                             <th class="py-3.5 px-4">Status</th>
-                            <th class="py-3.5 px-4 text-right">Aksi</th>
+                            <th class="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-800/60">
-                        @forelse($promotions as $promo)
-                            <tr class="hover:bg-zinc-800/30 transition">
-                                <td class="py-3.5 px-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-16 h-10 rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden flex-shrink-0">
-                                            @if($promo->imageUrl())
-                                                <img src="{{ $promo->imageUrl() }}" alt="{{ $promo->title }}" class="w-full h-full object-cover">
+                    <tbody class="divide-y divide-white/10 text-sm">
+                        @foreach ($items as $promotion)
+                            @php
+                                $isActive = (bool) ($promotion->is_active ?? true);
+                                $promoTitle = $promotion->title ?? ($promotion->name ?? '-');
+                                $imagePath = method_exists($promotion, 'imageUrl')
+                                    ? $promotion->imageUrl()
+                                    : ($promotion->image_url ?? ($promotion->image ? asset('storage/' . ltrim($promotion->image, '/')) : null));
+
+                                $startCarbon = !empty($promotion->start_date)
+                                    ? \Illuminate\Support\Carbon::parse($promotion->start_date)
+                                    : (!empty($promotion->starts_at) ? \Illuminate\Support\Carbon::parse($promotion->starts_at) : null);
+
+                                $endCarbon = !empty($promotion->end_date)
+                                    ? \Illuminate\Support\Carbon::parse($promotion->end_date)
+                                    : (!empty($promotion->ends_at) ? \Illuminate\Support\Carbon::parse($promotion->ends_at) : null);
+                            @endphp
+                            <tr class="hover:bg-zinc-900/60 transition">
+                                <td class="py-3.5 px-4 sm:px-6">
+                                    <div class="flex items-center gap-3 min-w-[200px]">
+                                        <div class="h-10 w-16 shrink-0 rounded-lg bg-[#18181B] border border-white/10 overflow-hidden flex items-center justify-center">
+                                            @if ($imagePath)
+                                                <img
+                                                    src="{{ $imagePath }}"
+                                                    alt="{{ $promoTitle }}"
+                                                    loading="lazy"
+                                                    class="h-full w-full object-cover"
+                                                >
                                             @else
-                                                <div class="w-full h-full flex items-center justify-center text-[10px] text-zinc-500">No Image</div>
+                                                <span class="text-[10px] text-zinc-500">No Banner</span>
                                             @endif
                                         </div>
-                                        <div>
-                                            <div class="font-medium text-white">{{ $promo->title }}</div>
-                                            <div class="text-[11px] text-zinc-500 line-clamp-1">{{ $promo->description }}</div>
+                                        <div class="min-w-0">
+                                            <div class="font-medium text-zinc-100 truncate">{{ $promoTitle }}</div>
+                                            @if (!empty($promotion->description))
+                                                <div class="text-xs text-zinc-400 line-clamp-1 mt-0.5">{{ $promotion->description }}</div>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
-                                <td class="py-3.5 px-4">
-                                    <div class="font-mono text-zinc-300">{{ $promo->start_date->format('d/m/Y') }} – {{ $promo->end_date->format('d/m/Y') }}</div>
-                                    @if(today()->between($promo->start_date, $promo->end_date) && $promo->is_active)
-                                        <span class="text-[10px] text-emerald-400">Sedang Berjalan</span>
-                                    @elseif(today()->gt($promo->end_date))
-                                        <span class="text-[10px] text-zinc-500">Sudah Berakhir</span>
-                                    @else
-                                        <span class="text-[10px] text-amber-400">Akan Datang</span>
+
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-300">
+                                    <div>{{ $startCarbon ? $startCarbon->format('d M Y') : '-' }} — {{ $endCarbon ? $endCarbon->format('d M Y') : '-' }}</div>
+                                    @if ($startCarbon && $endCarbon)
+                                        @if (today()->between($startCarbon, $endCarbon) && $isActive)
+                                            <span class="text-[10px] text-emerald-400">Sedang Berjalan</span>
+                                        @elseif (today()->gt($endCarbon))
+                                            <span class="text-[10px] text-zinc-500">Sudah Berakhir</span>
+                                        @else
+                                            <span class="text-[10px] text-amber-400">Akan Datang</span>
+                                        @endif
                                     @endif
                                 </td>
-                                <td class="py-3.5 px-4 text-zinc-400">
-                                    {{ $promo->creator->name ?? 'Seller' }}
+
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-400">
+                                    {{ $promotion->creator->name ?? 'Seller' }}
                                 </td>
-                                <td class="py-3.5 px-4">
-                                    @if($promo->is_active)
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
+
+                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                    @if ($isActive)
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                                             Aktif
                                         </span>
                                     @else
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 border border-white/10">
                                             Nonaktif
                                         </span>
                                     @endif
                                 </td>
-                                <td class="py-3.5 px-4 text-right space-x-2">
-                                    <!-- Toggle -->
-                                    <form action="{{ route('seller.promotions.toggle', $promo) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="text-xs text-zinc-400 hover:text-white transition">
-                                            {{ $promo->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-                                        </button>
-                                    </form>
-                                    <span>•</span>
-                                    <!-- Edit -->
-                                    <a href="{{ route('seller.promotions.edit', $promo) }}" class="text-xs text-blue-400 hover:underline">
-                                        Edit
-                                    </a>
-                                    <span>•</span>
-                                    <!-- Delete -->
-                                    <form action="{{ route('seller.promotions.destroy', $promo) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus promosi ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs text-rose-400 hover:underline">
-                                            Hapus
-                                        </button>
-                                    </form>
+
+                                <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-2">
+                                        @if (Route::has('seller.promotions.toggle'))
+                                            <form method="POST" action="{{ route('seller.promotions.toggle', $promotion->id ?? $promotion) }}" class="m-0">
+                                                @csrf
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
+                                                >
+                                                    {{ $isActive ? 'Nonaktifkan' : 'Aktifkan' }}
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if (Route::has('seller.promotions.edit'))
+                                            <a
+                                                href="{{ route('seller.promotions.edit', $promotion->id ?? $promotion) }}"
+                                                class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
+                                            >
+                                                Ubah
+                                            </a>
+                                        @endif
+
+                                        @if (Route::has('seller.promotions.destroy'))
+                                            <form
+                                                method="POST"
+                                                action="{{ route('seller.promotions.destroy', $promotion->id ?? $promotion) }}"
+                                                onsubmit="return confirm('Yakin ingin menghapus promosi ini? Tindakan ini tidak dapat dibatalkan.');"
+                                                class="m-0"
+                                            >
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 border border-rose-500/30 transition cursor-pointer"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="py-8 text-center text-zinc-500">
-                                    Belum ada promosi yang ditambahkan.
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
 
-            @if($promotions->hasPages())
-                <div class="p-4 border-t border-zinc-800">
-                    {{ $promotions->links() }}
+            @if (method_exists($items, 'hasPages') && $items->hasPages())
+                <div class="px-4 sm:px-6 py-4 border-t border-white/10">
+                    {{ $items->links() }}
                 </div>
             @endif
-        </div>
+        @else
+            <div class="px-4 py-14 text-center">
+                <p class="text-sm font-medium text-zinc-200">Belum ada promosi yang dibuat</p>
+                <p class="mt-1 text-xs text-zinc-400">
+                    Tambahkan banner promosi beranda dengan periode tanggal berlaku dan status aktif tayang.
+                </p>
+                @if (Route::has('seller.promotions.create'))
+                    <div class="mt-4">
+                        <a
+                            href="{{ route('seller.promotions.create') }}"
+                            class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-950 bg-zinc-100 hover:bg-white transition"
+                        >
+                            Tambah Promosi
+                        </a>
+                    </div>
+                @endif
+            </div>
+        @endif
     </div>
-</x-layouts.seller>
+</x-seller-layout>

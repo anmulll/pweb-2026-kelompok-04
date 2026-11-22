@@ -36,7 +36,7 @@ class ProductController extends Controller
 
         $categories = Category::active()->orderBy('name')->get();
 
-        return view('seller.products.create', compact('categories'));
+        return view('seller.products.form', compact('categories'));
     }
 
     public function store(StoreProductRequest $request): RedirectResponse
@@ -55,7 +55,7 @@ class ProductController extends Controller
 
         $categories = Category::active()->orderBy('name')->get();
 
-        return view('seller.products.edit', compact('product', 'categories'));
+        return view('seller.products.form', compact('product', 'categories'));
     }
 
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
