@@ -85,6 +85,10 @@
                 </div>
 
                 <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+                    <a href="{{ route('home') }}" class="hidden sm:inline-flex text-xs text-zinc-300 hover:text-white transition">
+                        Kunjungi Toko
+                    </a>
+
                     <div class="hidden md:block text-right">
                         <div class="text-sm font-medium text-zinc-100 leading-tight">{{ $sellerName }}</div>
                         <div class="text-xs text-zinc-400 leading-tight">{{ $sellerEmail }}</div>
@@ -145,6 +149,16 @@
                     @if (session('error'))
                         <div class="mb-6 rounded-2xl glass-surface bg-rose-950/40 border border-rose-500/30 px-4 py-3 text-sm text-rose-200" role="alert">
                             {{ session('error') }}
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="mb-6 rounded-2xl glass-surface bg-rose-950/40 border border-rose-500/30 px-4 py-3 text-sm text-rose-200" role="alert">
+                            <ul class="list-disc pl-5 space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
                     @endif
 

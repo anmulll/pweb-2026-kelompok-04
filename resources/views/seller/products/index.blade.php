@@ -15,6 +15,50 @@
         </x-slot:actions>
     </x-seller.page-header>
 
+    {{-- Filter & Pencarian --}}
+    <div class="mb-6 glass-surface rounded-2xl border border-white/10 p-4">
+        <form action="{{ route('seller.products.index') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <input
+                type="text"
+                name="search"
+                value="{{ request('search') }}"
+                placeholder="Cari nama, model, SKU..."
+                class="w-full rounded-xl bg-[#18181B] border border-white/10 px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+            >
+
+            <select
+                name="category_id"
+                class="w-full rounded-xl bg-[#18181B] border border-white/10 px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+            >
+                <option value="">Semua Kategori</option>
+                @foreach (($categories ?? collect()) as $cat)
+                    <option value="{{ $cat->id }}" @selected(request('category_id') == $cat->id)>{{ $cat->name }}</option>
+                @endforeach
+            </select>
+
+            <select
+                name="condition"
+                class="w-full rounded-xl bg-[#18181B] border border-white/10 px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+            >
+                <option value="">Semua Kondisi</option>
+                <option value="new" @selected(request('condition') === 'new')>Baru</option>
+                <option value="used" @selected(request('condition') === 'used')>Second</option>
+            </select>
+
+            <div class="flex items-center gap-2">
+                <button
+                    type="submit"
+                    class="w-full inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
+                >
+                    Filter
+                </button>
+                @if (request()->hasAny(['search', 'category_id', 'condition']))
+                    <a href="{{ route('seller.products.index') }}" class="text-xs text-zinc-400 hover:text-white px-2">Reset</a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     @php
         $items = $products ?? collect();
     @endphp
@@ -39,10 +83,17 @@
                             @php
                                 $isActive = (bool) ($product->is_active ?? true);
                                 $stock = (int) ($product->stock ?? 0);
-                                $imagePath = $product->image_url ?? ($product->image ? asset('storage/' . ltrim($product->image, '/')) : null);
+                                $imagePath = method_exists($product, 'imageUrl')
+                                    ? $product->imageUrl()
+                                    : ($product->image_url ?? ($product->image ? asset('storage/' . ltrim($product->image, '/')) : null));
+                                $isUsed = method_exists($product, 'isUsed')
+                                    ? $product->isUsed()
+                                    : in_array(strtolower((string) ($product->condition instanceof \BackedEnum ? $product->condition->value : ($product->condition ?? 'new'))), ['used', 'second'], true);
+                                $gradeValue = $product->condition_grade instanceof \BackedEnum
+                                    ? $product->condition_grade->value
+                                    : $product->condition_grade;
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
-                                {{-- Gambar & Nama --}}
                                 <td class="py-3.5 px-4 sm:px-6">
                                     <div class="flex items-center gap-3 min-w-[200px]">
                                         <div class="h-12 w-12 shrink-0 rounded-xl bg-[#18181B] border border-white/10 overflow-hidden flex items-center justify-center">
@@ -50,6 +101,7 @@
                                                 <img
                                                     src="{{ $imagePath }}"
                                                     alt="{{ $product->name }}"
+                                                    loading="lazy"
                                                     class="h-full w-full object-cover"
                                                 >
                                             @else
@@ -65,47 +117,39 @@
                                     </div>
                                 </td>
 
-                                {{-- SKU & Model --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <div class="text-xs font-mono text-zinc-200">{{ $product->sku ?? '-' }}</div>
                                     <div class="text-xs text-zinc-400 mt-0.5">{{ $product->model ?? '-' }}</div>
                                 </td>
 
-                                {{-- Kondisi --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap text-xs">
-                                    @php
-                                        $condRaw = strtolower((string) ($product->condition ?? 'new'));
-                                        $isUsed = in_array($condRaw, ['used', 'second', 'bekas mulus', 'bekas', 'refurbished'], true);
-                                    @endphp
                                     @if ($isUsed)
                                         <div class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
                                             <span>Second</span>
-                                            @if (!empty($product->condition_grade))
-                                                <span class="font-bold">Grade {{ strtoupper($product->condition_grade) }}</span>
+                                            @if (!empty($gradeValue))
+                                                <span class="font-bold">Grade {{ strtoupper((string) $gradeValue) }}</span>
                                             @endif
                                         </div>
                                         @if (!empty($product->battery_health))
                                             <div class="text-[11px] text-zinc-400 mt-0.5">BH: {{ $product->battery_health }}%</div>
                                         @endif
                                     @else
-                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 font-medium bg-zinc-800 text-zinc-200 border border-white/10">
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
                                             Baru
                                         </span>
                                     @endif
                                 </td>
 
-                                {{-- Harga --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap font-medium text-zinc-100">
                                     Rp {{ number_format((float) ($product->price ?? 0), 0, ',', '.') }}
                                 </td>
 
-                                {{-- Stok --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     @if ($stock <= 0)
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30">
                                             Habis (0)
                                         </span>
-                                    @elseif ($stock <= 5)
+                                    @elseif ($stock <= 1)
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
                                             Menipis ({{ $stock }})
                                         </span>
@@ -114,7 +158,6 @@
                                     @endif
                                 </td>
 
-                                {{-- Status --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     @if ($isActive)
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
@@ -127,13 +170,11 @@
                                     @endif
                                 </td>
 
-                                {{-- Aksi --}}
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2">
                                         @if (Route::has('seller.products.toggle'))
                                             <form method="POST" action="{{ route('seller.products.toggle', $product->id ?? $product) }}" class="m-0">
                                                 @csrf
-                                                @method('PATCH')
                                                 <button
                                                     type="submit"
                                                     class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
@@ -177,7 +218,7 @@
                 </table>
             </div>
 
-            @if (method_exists($items, 'links'))
+            @if (method_exists($items, 'hasPages') && $items->hasPages())
                 <div class="px-4 sm:px-6 py-4 border-t border-white/10">
                     {{ $items->links() }}
                 </div>

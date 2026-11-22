@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Seller;
 
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\Promotion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -74,7 +77,13 @@ class SellerConsoleTest extends TestCase
             ->assertSee('Nama Kategori')
             ->assertSee('Slug URL');
 
-        $this->get(route('seller.categories.edit', 1))
+        $category = Category::create([
+            'name' => 'iPhone',
+            'slug' => 'iphone',
+            'is_active' => true,
+        ]);
+
+        $this->get(route('seller.categories.edit', $category))
             ->assertOk()
             ->assertSee('Ubah Kategori')
             ->assertSee('Simpan Perubahan');
@@ -100,7 +109,24 @@ class SellerConsoleTest extends TestCase
         $createResponse->assertSee('Informasi Garansi');
         $createResponse->assertSee('Catatan Kekurangan Fisik &amp; Fungsi', false);
 
-        $editResponse = $this->get(route('seller.products.edit', 1));
+        $category = Category::create([
+            'name' => 'iPhone',
+            'slug' => 'iphone-edit',
+            'is_active' => true,
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'iPhone 15 Pro 256GB',
+            'model' => 'iPhone 15 Pro',
+            'sku' => 'IP15P-256-TEST',
+            'condition' => 'new',
+            'price' => 18999000,
+            'stock' => 5,
+            'is_active' => true,
+        ]);
+
+        $editResponse = $this->get(route('seller.products.edit', $product));
         $editResponse->assertOk();
         $editResponse->assertSee('Ubah Produk');
         $editResponse->assertSee('Simpan Perubahan');
@@ -122,7 +148,16 @@ class SellerConsoleTest extends TestCase
             ->assertSee('Tanggal Mulai')
             ->assertSee('Tanggal Berakhir');
 
-        $this->get(route('seller.promotions.edit', 1))
+        $promotion = Promotion::create([
+            'created_by' => $this->seller->id,
+            'title' => 'Promo Spesial Apple',
+            'description' => 'Diskon perangkat Apple pilihan.',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(7)->toDateString(),
+            'is_active' => true,
+        ]);
+
+        $this->get(route('seller.promotions.edit', $promotion))
             ->assertOk()
             ->assertSee('Ubah Promosi')
             ->assertSee('Simpan Perubahan');

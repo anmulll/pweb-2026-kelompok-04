@@ -11,7 +11,8 @@
         : null;
 
     $rawCondition = old('condition', $product->condition ?? 'new');
-    $isUsed = in_array(strtolower((string) $rawCondition), ['used', 'second', 'bekas', 'bekas mulus'], true);
+    $rawConditionValue = $rawCondition instanceof \BackedEnum ? $rawCondition->value : (string) $rawCondition;
+    $isUsed = in_array(strtolower($rawConditionValue), ['used', 'second', 'bekas', 'bekas mulus'], true);
 @endphp
 
 <x-seller-layout :title="$pageTitle">

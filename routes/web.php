@@ -1,145 +1,161 @@
-
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Buyer\CartController;
+use App\Http\Controllers\Buyer\CheckoutController;
+use App\Http\Controllers\Buyer\ProfileController;
+use App\Http\Controllers\Public\CatalogController;
+use App\Http\Controllers\Public\HomeController;
+use App\Http\Controllers\Seller\CategoryController as SellerCategoryController;
+use App\Http\Controllers\Seller\ProductController as SellerProductController;
+use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+/*
+|--------------------------------------------------------------------------
+| Public Storefront Routes
+|--------------------------------------------------------------------------
+*/
 
-// Authentication
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('/catalog', [CatalogController::class, 'index'])
+    ->name('catalog.index');
+
+Route::get('/products', function () {
+    return redirect()->route('catalog.index');
+})->name('products');
+
+Route::get('/products/{id}', [CatalogController::class, 'show'])
+    ->name('products.show');
+
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::get('/register', [RegisteredUserController::class, 'create'])
+        ->name('register');
 
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('throttle:10,1');
 
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+        ->name('login');
 
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:10,1');
 });
 
-// Logout
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
-// Buyer
+/*
+|--------------------------------------------------------------------------
+| Buyer Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::prefix('buyer')
     ->name('buyer.')
     ->middleware(['auth', 'role:buyer'])
     ->group(function () {
         Route::get('/dashboard', function () {
-            return response('Buyer Dashboard', 200);
+            return view('buyer.dashboard');
         })->name('dashboard');
+
+        // Buyer Profile
+        Route::get('/profile', function () {
+            return view('buyer.profile');
+        })->name('profile');
+
+        Route::put('/profile', [ProfileController::class, 'update'])
+            ->name('profile.update');
+
+        // Buyer Orders
+        Route::get('/orders', function () {
+            return view('buyer.orders');
+        })->name('orders');
+
+        Route::get('/orders/{order}', function ($order) {
+            return response("Detail Pesanan {$order}", 200);
+        })->name('orders.show');
+
+        // Persistent Cart
+        Route::get('/cart', [CartController::class, 'index'])
+            ->name('cart.index');
+
+        Route::post('/cart', [CartController::class, 'store'])
+            ->name('cart.store');
+
+        Route::patch('/cart/{cartItem}', [CartController::class, 'update'])
+            ->name('cart.update');
+
+        Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])
+            ->name('cart.destroy');
+
+        // Two-Phase Checkout
+        Route::get('/checkout', [CheckoutController::class, 'index'])
+            ->name('checkout.index');
+
+        Route::post('/checkout', [CheckoutController::class, 'store'])
+            ->name('checkout.store');
     });
 
-// Seller
+/*
+|--------------------------------------------------------------------------
+| Seller Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::prefix('seller')
     ->name('seller.')
     ->middleware(['auth', 'role:seller'])
     ->group(function () {
-
-        // Dashboard
-        Route::get('/dashboard', function () {
-            return view('seller.dashboard');
-        })->name('dashboard');
-
         Route::get('/', function () {
             return redirect()->route('seller.dashboard');
         });
 
-        // Kategori
-        Route::get('/categories', function () {
-            return view('seller.categories.index');
-        })->name('categories.index');
+        // Seller Dashboard
+        Route::get('/dashboard', function () {
+            return view('seller.dashboard');
+        })->name('dashboard');
 
-        Route::get('/categories/create', function () {
-            return view('seller.categories.form');
-        })->name('categories.create');
+        // Category Management
+        Route::resource('categories', SellerCategoryController::class)
+            ->except(['show']);
 
-        Route::post('/categories', function () {
-            return redirect()->route('seller.categories.index')->with('success', 'Kategori berhasil disimpan.');
-        })->name('categories.store');
+        Route::match(
+            ['post', 'patch'],
+            'categories/{category}/toggle',
+            [SellerCategoryController::class, 'toggle']
+        )->name('categories.toggle');
 
-        Route::get('/categories/{category}/edit', function ($category) {
-            return view('seller.categories.form', ['category' => (object) ['id' => $category, 'name' => 'Kategori Contoh', 'slug' => 'kategori-contoh', 'description' => '', 'is_active' => true]]);
-        })->name('categories.edit');
+        // Product Management
+        Route::resource('products', SellerProductController::class)
+            ->except(['show']);
 
-        Route::put('/categories/{category}', function ($category) {
-            return redirect()->route('seller.categories.index')->with('success', 'Kategori berhasil diperbarui.');
-        })->name('categories.update');
+        Route::match(
+            ['post', 'patch'],
+            'products/{product}/toggle',
+            [SellerProductController::class, 'toggle']
+        )->name('products.toggle');
 
-        Route::delete('/categories/{category}', function ($category) {
-            return redirect()->route('seller.categories.index')->with('success', 'Kategori berhasil dihapus.');
-        })->name('categories.destroy');
+        // Promotion Management
+        Route::resource('promotions', SellerPromotionController::class)
+            ->except(['show']);
 
-        Route::patch('/categories/{category}/toggle', function ($category) {
-            return redirect()->route('seller.categories.index')->with('success', 'Status kategori berhasil diubah.');
-        })->name('categories.toggle');
+        Route::match(
+            ['post', 'patch'],
+            'promotions/{promotion}/toggle',
+            [SellerPromotionController::class, 'toggle']
+        )->name('promotions.toggle');
 
-        // Produk
-        Route::get('/products', function () {
-            return view('seller.products.index');
-        })->name('products.index');
-
-        Route::get('/products/create', function () {
-            return view('seller.products.form');
-        })->name('products.create');
-
-        Route::post('/products', function () {
-            return redirect()->route('seller.products.index')->with('success', 'Produk berhasil ditambahkan.');
-        })->name('products.store');
-
-        Route::get('/products/{product}/edit', function ($product) {
-            return view('seller.products.form', ['product' => (object) ['id' => $product, 'name' => 'iPhone 15 Pro 256GB', 'sku' => 'IP15P-256', 'model' => 'A3102', 'condition' => 'used', 'condition_grade' => 'A', 'battery_health' => 95, 'functional_status' => 'normal', 'defect_notes' => 'Mulus tanpa goresan', 'accessories' => 'Fullset Box Original', 'warranty_info' => 'Garansi Toko 30 Hari', 'price' => 16500000, 'stock' => 1, 'is_active' => true]]);
-        })->name('products.edit');
-
-        Route::put('/products/{product}', function ($product) {
-            return redirect()->route('seller.products.index')->with('success', 'Produk berhasil diperbarui.');
-        })->name('products.update');
-
-        Route::delete('/products/{product}', function ($product) {
-            return redirect()->route('seller.products.index')->with('success', 'Produk berhasil dihapus.');
-        })->name('products.destroy');
-
-        Route::patch('/products/{product}/toggle', function ($product) {
-            return redirect()->route('seller.products.index')->with('success', 'Status produk berhasil diubah.');
-        })->name('products.toggle');
-
-        // Promosi
-        Route::get('/promotions', function () {
-            return view('seller.promotions.index');
-        })->name('promotions.index');
-
-        Route::get('/promotions/create', function () {
-            return view('seller.promotions.form');
-        })->name('promotions.create');
-
-        Route::post('/promotions', function () {
-            return redirect()->route('seller.promotions.index')->with('success', 'Promosi berhasil dibuat.');
-        })->name('promotions.store');
-
-        Route::get('/promotions/{promotion}/edit', function ($promotion) {
-            return view('seller.promotions.form', ['promotion' => (object) ['id' => $promotion, 'name' => 'Promo Spesial Apple', 'slug' => 'promo-spesial-apple', 'start_date' => now()->toDateString(), 'end_date' => now()->addDays(7)->toDateString(), 'description' => 'Diskon perangkat Apple pilihan.', 'is_active' => true]]);
-        })->name('promotions.edit');
-
-        Route::put('/promotions/{promotion}', function ($promotion) {
-            return redirect()->route('seller.promotions.index')->with('success', 'Promosi berhasil diperbarui.');
-        })->name('promotions.update');
-
-        Route::delete('/promotions/{promotion}', function ($promotion) {
-            return redirect()->route('seller.promotions.index')->with('success', 'Promosi berhasil dihapus.');
-        })->name('promotions.destroy');
-
-        Route::patch('/promotions/{promotion}/toggle', function ($promotion) {
-            return redirect()->route('seller.promotions.index')->with('success', 'Status promosi berhasil diubah.');
-        })->name('promotions.toggle');
-
-        // Pesanan
+        // Seller Orders UI
         Route::get('/orders', function () {
             return view('seller.orders.index');
         })->name('orders.index');
@@ -167,13 +183,13 @@ Route::prefix('seller')
                         'price' => 16500000,
                         'quantity' => 1,
                         'subtotal' => 16500000,
-                    ]
+                    ],
                 ]),
                 'payment' => (object) [
                     'status' => 'paid',
                     'method' => 'DOKU Checkout (QRIS / VA)',
                     'reference' => 'DOKU-PAY-' . $order,
-                ]
+                ],
             ]]);
         })->name('orders.show');
 
@@ -198,7 +214,7 @@ Route::prefix('seller')
             ]);
         })->name('orders.payment.status');
 
-        // Pembayaran
+        // Seller Payments UI
         Route::get('/payments', function () {
             return view('seller.payments.index');
         })->name('payments.index');
@@ -207,7 +223,7 @@ Route::prefix('seller')
             return back()->with('success', 'Status pembayaran berhasil disinkronkan dengan gateway DOKU.');
         })->name('payments.sync');
 
-        // Laporan
+        // Seller Reports UI
         Route::get('/reports', function () {
             return view('seller.reports.index');
         })->name('reports.index');
@@ -215,5 +231,4 @@ Route::prefix('seller')
         Route::get('/reports/pdf', function () {
             return view('seller.reports.pdf');
         })->name('reports.pdf');
-
     });

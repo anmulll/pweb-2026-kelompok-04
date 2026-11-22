@@ -15,6 +15,25 @@
         </x-slot:actions>
     </x-seller.page-header>
 
+    {{-- Pencarian --}}
+    <div class="mb-6 glass-surface rounded-2xl border border-white/10 p-4">
+        <form action="{{ route('seller.categories.index') }}" method="GET" class="flex items-center gap-3 w-full max-w-md">
+            <input
+                type="text"
+                name="search"
+                value="{{ request('search') }}"
+                placeholder="Cari nama kategori..."
+                class="w-full rounded-xl bg-[#18181B] border border-white/10 px-3.5 py-2 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+            >
+            <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
+            >
+                Cari
+            </button>
+        </form>
+    </div>
+
     @php
         $items = $categories ?? collect();
     @endphp
@@ -27,6 +46,7 @@
                         <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
                             <th class="py-3.5 px-4 sm:px-6">Nama Kategori</th>
                             <th class="py-3.5 px-4">Slug</th>
+                            <th class="py-3.5 px-4">Jumlah Produk</th>
                             <th class="py-3.5 px-4">Status</th>
                             <th class="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
                         </tr>
@@ -48,6 +68,10 @@
                                     {{ $category->slug ?? '-' }}
                                 </td>
 
+                                <td class="py-3.5 px-4 text-xs text-zinc-300">
+                                    {{ $category->products_count ?? 0 }} produk
+                                </td>
+
                                 <td class="py-3.5 px-4">
                                     @if ($isActive)
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
@@ -62,11 +86,9 @@
 
                                 <td class="py-3.5 px-4 sm:px-6">
                                     <div class="flex flex-wrap items-center justify-end gap-2">
-                                        {{-- Toggle Aktif / Nonaktif --}}
                                         @if (Route::has('seller.categories.toggle'))
                                             <form method="POST" action="{{ route('seller.categories.toggle', $category->id ?? $category) }}" class="m-0">
                                                 @csrf
-                                                @method('PATCH')
                                                 <button
                                                     type="submit"
                                                     class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
@@ -76,7 +98,6 @@
                                             </form>
                                         @endif
 
-                                        {{-- Ubah --}}
                                         @if (Route::has('seller.categories.edit'))
                                             <a
                                                 href="{{ route('seller.categories.edit', $category->id ?? $category) }}"
@@ -86,7 +107,6 @@
                                             </a>
                                         @endif
 
-                                        {{-- Hapus dengan Konfirmasi --}}
                                         @if (Route::has('seller.categories.destroy'))
                                             <form
                                                 method="POST"
@@ -112,7 +132,7 @@
                 </table>
             </div>
 
-            @if (method_exists($items, 'links'))
+            @if (method_exists($items, 'hasPages') && $items->hasPages())
                 <div class="px-4 sm:px-6 py-4 border-t border-white/10">
                     {{ $items->links() }}
                 </div>

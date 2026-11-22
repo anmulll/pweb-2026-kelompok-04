@@ -26,8 +26,8 @@
                     <thead>
                         <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
                             <th class="py-3.5 px-4 sm:px-6">Banner &amp; Program</th>
-                            <th class="py-3.5 px-4">Slug</th>
                             <th class="py-3.5 px-4">Periode Berlaku</th>
+                            <th class="py-3.5 px-4">Dibuat Oleh</th>
                             <th class="py-3.5 px-4">Status</th>
                             <th class="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
                         </tr>
@@ -36,15 +36,18 @@
                         @foreach ($items as $promotion)
                             @php
                                 $isActive = (bool) ($promotion->is_active ?? true);
-                                $imagePath = $promotion->image_url ?? ($promotion->image ? asset('storage/' . ltrim($promotion->image, '/')) : null);
+                                $promoTitle = $promotion->title ?? ($promotion->name ?? '-');
+                                $imagePath = method_exists($promotion, 'imageUrl')
+                                    ? $promotion->imageUrl()
+                                    : ($promotion->image_url ?? ($promotion->image ? asset('storage/' . ltrim($promotion->image, '/')) : null));
 
-                                $startDate = !empty($promotion->start_date)
-                                    ? \Illuminate\Support\Carbon::parse($promotion->start_date)->format('d M Y')
-                                    : (!empty($promotion->starts_at) ? \Illuminate\Support\Carbon::parse($promotion->starts_at)->format('d M Y') : '-');
+                                $startCarbon = !empty($promotion->start_date)
+                                    ? \Illuminate\Support\Carbon::parse($promotion->start_date)
+                                    : (!empty($promotion->starts_at) ? \Illuminate\Support\Carbon::parse($promotion->starts_at) : null);
 
-                                $endDate = !empty($promotion->end_date)
-                                    ? \Illuminate\Support\Carbon::parse($promotion->end_date)->format('d M Y')
-                                    : (!empty($promotion->ends_at) ? \Illuminate\Support\Carbon::parse($promotion->ends_at)->format('d M Y') : '-');
+                                $endCarbon = !empty($promotion->end_date)
+                                    ? \Illuminate\Support\Carbon::parse($promotion->end_date)
+                                    : (!empty($promotion->ends_at) ? \Illuminate\Support\Carbon::parse($promotion->ends_at) : null);
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
                                 <td class="py-3.5 px-4 sm:px-6">
@@ -53,7 +56,8 @@
                                             @if ($imagePath)
                                                 <img
                                                     src="{{ $imagePath }}"
-                                                    alt="{{ $promotion->name }}"
+                                                    alt="{{ $promoTitle }}"
+                                                    loading="lazy"
                                                     class="h-full w-full object-cover"
                                                 >
                                             @else
@@ -61,7 +65,7 @@
                                             @endif
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="font-medium text-zinc-100 truncate">{{ $promotion->name ?? ($promotion->title ?? '-') }}</div>
+                                            <div class="font-medium text-zinc-100 truncate">{{ $promoTitle }}</div>
                                             @if (!empty($promotion->description))
                                                 <div class="text-xs text-zinc-400 line-clamp-1 mt-0.5">{{ $promotion->description }}</div>
                                             @endif
@@ -69,12 +73,21 @@
                                     </div>
                                 </td>
 
-                                <td class="py-3.5 px-4 text-xs font-mono text-zinc-400">
-                                    {{ $promotion->slug ?? '-' }}
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-300">
+                                    <div>{{ $startCarbon ? $startCarbon->format('d M Y') : '-' }} — {{ $endCarbon ? $endCarbon->format('d M Y') : '-' }}</div>
+                                    @if ($startCarbon && $endCarbon)
+                                        @if (today()->between($startCarbon, $endCarbon) && $isActive)
+                                            <span class="text-[10px] text-emerald-400">Sedang Berjalan</span>
+                                        @elseif (today()->gt($endCarbon))
+                                            <span class="text-[10px] text-zinc-500">Sudah Berakhir</span>
+                                        @else
+                                            <span class="text-[10px] text-amber-400">Akan Datang</span>
+                                        @endif
+                                    @endif
                                 </td>
 
-                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-300">
-                                    {{ $startDate }} — {{ $endDate }}
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs text-zinc-400">
+                                    {{ $promotion->creator->name ?? 'Seller' }}
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap">
@@ -94,7 +107,6 @@
                                         @if (Route::has('seller.promotions.toggle'))
                                             <form method="POST" action="{{ route('seller.promotions.toggle', $promotion->id ?? $promotion) }}" class="m-0">
                                                 @csrf
-                                                @method('PATCH')
                                                 <button
                                                     type="submit"
                                                     class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
@@ -138,7 +150,7 @@
                 </table>
             </div>
 
-            @if (method_exists($items, 'links'))
+            @if (method_exists($items, 'hasPages') && $items->hasPages())
                 <div class="px-4 sm:px-6 py-4 border-t border-white/10">
                     {{ $items->links() }}
                 </div>
