@@ -99,11 +99,11 @@
             {{-- Actions --}}
             <div class="mt-6 flex flex-col gap-3 sm:flex-row">
 
-                <x-button href="/cart" class="flex-1">
+                <x-button href="{{ route('buyer.cart') }}" class="flex-1">
                     Add to Cart
                 </x-button>
 
-                <x-button href="/products" variant="secondary">
+                <x-button href="{{ route('products') }}" variant="secondary">
                     Back to Products
                 </x-button>
 

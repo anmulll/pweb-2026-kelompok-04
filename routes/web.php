@@ -66,6 +66,16 @@ Route::prefix('buyer')
             return view('buyer.cart');
         })->name('cart');
 
+        // Checkout
+        Route::get('/checkout', function () {
+            return view('buyer.checkout');
+        })->name('checkout');
+
+        // Order Detail
+        Route::get('/orders/{id}', function ($id) {
+            return view('buyer.order-detail');
+        })->name('orders.show');
+
     });
 
 // Seller Dashboard
@@ -77,5 +87,7 @@ Route::prefix('seller')
             return response('Seller Dashboard', 200);
         })->name('dashboard');
     });
+
+
 
 
