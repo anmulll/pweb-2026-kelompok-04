@@ -11,8 +11,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Guard: Tolak eksekusi data demo di lingkungan production
+        if (app()->environment('production')) {
+            $this->command->warn('Peringatan: Demo seeder diblokir pada lingkungan Production!');
+            return;
+        }
+
+        // Panggil seeder secara berurutan sesuai dependency
         $this->call([
-            MasterDataSeeder::class,
+            UserSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+            PromotionSeeder::class,
+            OrderDemoSeeder::class,
         ]);
     }
 }
