@@ -1,1 +1,0 @@
-@include('buyer.cart.index')
