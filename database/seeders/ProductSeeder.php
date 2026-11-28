@@ -8,6 +8,8 @@ use App\Enums\ProductCondition;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class ProductSeeder extends Seeder
 {
@@ -17,6 +19,18 @@ class ProductSeeder extends Seeder
 
         if ($categories->isEmpty()) {
             return;
+        }
+
+        // Salin aset gambar demo ke disk public agar fresh clone langsung memiliki foto produk
+        $assetDir = database_path('seeders/assets/products');
+        if (File::isDirectory($assetDir)) {
+            $disk = Storage::disk('public');
+            foreach (File::files($assetDir) as $file) {
+                $targetPath = 'products/' . $file->getFilename();
+                if (! $disk->exists($targetPath)) {
+                    $disk->put($targetPath, File::get($file->getPathname()));
+                }
+            }
         }
 
         $productsData = [

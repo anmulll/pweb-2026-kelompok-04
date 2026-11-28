@@ -61,9 +61,9 @@
    ```
    Sesuaikan kredensial database lokal (`DB_DATABASE=istore_dev`, `DB_USERNAME`, `DB_PASSWORD`) pada file `.env`.
 
-4. **Jalankan migrasi (dan seeder saat tersedia) serta storage link:**
+4. **Jalankan migrasi, seeder data demo, serta storage link:**
    ```bash
-   php artisan migrate
+   php artisan migrate --seed
    php artisan storage:link
    ```
 
@@ -82,14 +82,22 @@
 ## Catatan DOKU Checkout Sandbox
 
 - Sistem dikunci pada mode Sandbox (`PAYMENT_GATEWAY=doku_sandbox`, `DOKU_IS_PRODUCTION=false`).
-- Isi `DOKU_CLIENT_ID` dan `DOKU_SECRET_KEY` hanya pada file `.env` lokal masing-masing.
+- Isi `DOKU_CLIENT_ID` dan `DOKU_SHARED_KEY` hanya pada file `.env` lokal masing-masing.
 - **Jangan pernah** meng-commit `.env`, `vendor/`, `node_modules/`, kredensial DOKU, atau file database lokal ke repository Git.
 
 ---
 
 ## Akun Demo
 
-Akun demo (Buyer & Seller) disediakan melalui database seeder tim (akan diperbarui setelah seeder final di-merge ke `develop`). Registrasi publik melalui `/register` selalu membuat akun dengan peran `buyer`.
+Akun demo otomatis dibuat saat menjalankan `php artisan migrate --seed` (diblokir otomatis saat `APP_ENV=production`):
+
+| Peran | Nama | Email | Password |
+| --- | --- | --- | --- |
+| **Seller** | Seller Demo iStore | `seller@istore.test` | `password` |
+| **Buyer 1** | Budi Pratama (Buyer 1) | `buyer@istore.test` | `password` |
+| **Buyer 2** | Siti Rahma (Buyer 2) | `buyer2@istore.test` | `password` |
+
+Registrasi publik melalui `/register` selalu membuat akun baru dengan peran `buyer`.
 
 ---
 
@@ -143,10 +151,11 @@ git diff --check
 
 ## Anggota Tim & Peran
 
-| Anggota | Peran |
-| --- | --- |
-| `anmul` | Project Manager + Documentation & DevOps (Bootstrap, Auth & RBAC) |
-| `putri` | Reviewer Utama & QA / Integrasi |
-| `gizalda` | Frontend UI (Auth Views, Storefront & Blade Components) |
-| `adel` | Database & Backend |
-| `caca` | Backend & Routing |
+| Anggota | Peran | Branch Utama |
+| --- | --- | --- |
+| `anmul` | Project Manager + Documentation & DevOps (Bootstrap, Auth & RBAC) | `feature/auth-rbac-and-project-bootstrap` |
+| `adel` | Backend Developer 1 (Master Data: Kategori, Produk, Promosi & Katalog) | `feature/catalog-master-data` |
+| `caca` | Backend Developer 2 (Transaksi: Cart, Checkout, Order, Payment & DOKU Sandbox) | `feature/checkout-order-doku` |
+| `gizalda` | Frontend / UI Developer 1 (Public Storefront & Buyer UI) | `feature/public-and-buyer-ui` |
+| `shalom` | Frontend / UI Developer 2 (Seller Console UI) | `feature/seller-console-ui` |
+| `putri` | Database & QA Engineer (ERD, Migration Review, Seeders/Factories & Automated Tests) | `feature/database-seeders-automated-tests` |
