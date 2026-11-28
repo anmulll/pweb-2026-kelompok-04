@@ -28,6 +28,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'IP15PM-256-NT',
                 'storage' => '256GB',
                 'color' => 'Natural Titanium',
+                'image' => 'products/iphone-15-pro-max.jpg',
                 'description' => 'Didesain dengan titanium tangguh dan ringan kelas kedirgantaraan. Dilengkapi chip A17 Pro revolusioner dan tombol Tindakan yang dapat disesuaikan.',
                 'condition' => ProductCondition::NEW,
                 'price' => 22999000,
@@ -42,6 +43,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'MBP14-M3P-512-SB',
                 'storage' => '512GB',
                 'color' => 'Space Black',
+                'image' => 'products/macbook-pro-14.jpg',
                 'description' => 'Laptop pro bertenaga chip M3 Pro. Layar Liquid Retina XDR memukau, baterai tahan hingga 18 jam, dan port lengkap.',
                 'condition' => ProductCondition::NEW,
                 'price' => 31499000,
@@ -56,6 +58,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'IPAD-AIR-M2-128-SL',
                 'storage' => '128GB',
                 'color' => 'Starlight',
+                'image' => 'products/ipad-air-m2.jpg',
                 'description' => 'Didukung chip M2 secepat kilat. Kompatibel dengan Apple Pencil Pro dan Magic Keyboard baru.',
                 'condition' => ProductCondition::NEW,
                 'price' => 11999000,
@@ -70,6 +73,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'AWS9-45-MID',
                 'storage' => '64GB',
                 'color' => 'Midnight',
+                'image' => 'products/apple-watch-s9.jpg',
                 'description' => 'Lebih cerdas, lebih cerah, dan lebih bertenaga berkat chip S9 SiP. Gestur ketuk dua kali magis.',
                 'condition' => ProductCondition::NEW,
                 'price' => 6999000,
@@ -84,6 +88,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'APP2-USBC',
                 'storage' => null,
                 'color' => 'White',
+                'image' => 'products/airpods-pro-2.jpg',
                 'description' => 'Peredam Kebisingan Aktif hingga 2x lebih baik. Audio Spasial Adaptif dan casing pengisian daya USB-C dengan Presisi Finding.',
                 'condition' => ProductCondition::NEW,
                 'price' => 3799000,
@@ -99,6 +104,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'IP14P-128-DP-SEC01',
                 'storage' => '128GB',
                 'color' => 'Deep Purple',
+                'image' => 'products/iphone-14-pro-purple.jpg',
                 'description' => 'Unit second resmi eks iBox. Dynamic Island, kamera 48 MP, dan layar Always-On. Lolos pengujian 32 titik sensor teknisi.',
                 'condition' => ProductCondition::USED,
                 'condition_grade' => ConditionGrade::A,
@@ -119,6 +125,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'IP13-128-MID-SEC02',
                 'storage' => '128GB',
                 'color' => 'Midnight',
+                'image' => 'products/iphone-13-midnight.jpg',
                 'description' => 'Unit second ex garansi resmi Indonesia. Kamera ganda dengan mode Sinematik, chip A15 Bionic cepat dan hemat daya.',
                 'condition' => ProductCondition::USED,
                 'condition_grade' => ConditionGrade::B,
@@ -139,6 +146,7 @@ class ProductSeeder extends Seeder
                 'sku' => 'MBA-M1-256-SG-SEC03',
                 'storage' => '256GB',
                 'color' => 'Space Grey',
+                'image' => 'products/macbook-air-m1.jpg',
                 'description' => 'Laptop tanpa kipas yang senyap dan super kencang. Cycle Count baterai rendah (68x), keyboard US layout nyaman.',
                 'condition' => ProductCondition::USED,
                 'condition_grade' => ConditionGrade::A,
@@ -154,7 +162,7 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($productsData as $prod) {
-            Product::firstOrCreate(
+            Product::updateOrCreate(
                 ['sku' => $prod['sku']],
                 $prod
             );

@@ -5,12 +5,12 @@
     $rawPaymentStatus = $order->payment_status ?? ($order->payment->status ?? 'pending');
     $paymentStatus = strtolower($rawPaymentStatus instanceof \BackedEnum ? $rawPaymentStatus->value : (string) $rawPaymentStatus);
 
-    $buyerName = $order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? '-'));
+    $buyerName = $order->recipient_name ?? ($order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? '-')));
     $buyerEmail = $order->buyer_email ?? ($order->user->email ?? '-');
-    $buyerPhone = $order->buyer_phone ?? ($order->shipping_phone ?? ($order->phone ?? '-'));
+    $buyerPhone = $order->recipient_phone ?? ($order->buyer_phone ?? ($order->shipping_phone ?? ($order->phone ?? '-')));
 
     $shippingAddress = $order->shipping_address ?? ($order->address ?? '-');
-    $courierName = old('courier', $order->courier ?? ($order->shipping_courier ?? ''));
+    $courierName = old('courier_name', $order->courier_name ?? ($order->courier ?? ($order->shipping_courier ?? '')));
     $trackingNumber = old('tracking_number', $order->tracking_number ?? ($order->resi ?? ''));
 
     $orderItems = $order->items ?? ($order->orderItems ?? collect());
@@ -137,16 +137,18 @@
                             <tbody class="divide-y divide-white/10 text-sm">
                                 @foreach ($orderItems as $item)
                                     @php
-                                        $itemName = $item->product_name ?? ($item->name ?? ($item->product->name ?? 'Item'));
-                                        $itemSku = $item->sku ?? ($item->product->sku ?? null);
-                                        $itemPrice = $item->price ?? ($item->unit_price ?? 0);
+                                        $itemName = $item->product_name_snapshot ?? ($item->product_name ?? ($item->name ?? ($item->product->name ?? 'Item')));
+                                        $itemSku = $item->sku_snapshot ?? ($item->sku ?? ($item->product->sku ?? null));
+                                        $itemPrice = $item->unit_price_snapshot ?? ($item->price ?? ($item->unit_price ?? 0));
                                         $itemQty = $item->quantity ?? ($item->qty ?? 1);
-                                        $itemSubtotal = $item->subtotal ?? ($item->total ?? ((float) $itemPrice * (int) $itemQty));
+                                        $itemSubtotal = $item->line_total ?? ($item->subtotal ?? ($item->total ?? ((float) $itemPrice * (int) $itemQty)));
 
-                                        $itemCond = strtolower((string) ($item->condition ?? ($item->product->condition ?? 'new')));
+                                        $rawCond = $item->condition_snapshot ?? ($item->condition ?? ($item->product?->condition ?? 'new'));
+                                        $itemCond = strtolower($rawCond instanceof \BackedEnum ? $rawCond->value : (string) $rawCond);
                                         $isItemUsed = in_array($itemCond, ['used', 'second', 'bekas', 'bekas mulus'], true);
-                                        $itemGrade = $item->condition_grade ?? ($item->grade ?? ($item->product->condition_grade ?? null));
-                                        $itemBH = $item->battery_health ?? ($item->product->battery_health ?? null);
+                                        $rawGrade = $item->condition_grade_snapshot ?? ($item->condition_grade ?? ($item->grade ?? ($item->product?->condition_grade ?? null)));
+                                        $itemGrade = $rawGrade instanceof \BackedEnum ? $rawGrade->value : $rawGrade;
+                                        $itemBH = $item->battery_health_snapshot ?? ($item->battery_health ?? ($item->product?->battery_health ?? null));
                                     @endphp
                                     <tr>
                                         <td class="py-3.5 px-5">
@@ -158,7 +160,7 @@
 
                                                 @if ($isItemUsed)
                                                     <span class="inline-flex items-center rounded-full px-2 py-0.2 text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                                        Second @if ($itemGrade) — Grade {{ strtoupper($itemGrade) }} @endif
+                                                        Second @if ($itemGrade) — Grade {{ strtoupper((string) $itemGrade) }} @endif
                                                     </span>
                                                     @if ($itemBH)
                                                         <span class="text-zinc-400 text-[11px]">BH {{ $itemBH }}%</span>
@@ -233,19 +235,19 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="courier" class="block text-xs font-medium text-zinc-300 mb-1.5">
+                                    <label for="courier_name" class="block text-xs font-medium text-zinc-300 mb-1.5">
                                         Nama Kurir Pengiriman <span class="text-rose-400">*</span>
                                     </label>
                                     <input
                                         type="text"
-                                        id="courier"
-                                        name="courier"
+                                        id="courier_name"
+                                        name="courier_name"
                                         value="{{ $courierName }}"
                                         required
                                         placeholder="Contoh: JNE YES, SiCepat BEST, Paxel"
-                                        class="w-full rounded-xl bg-[#18181B] border @error('courier') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                                        class="w-full rounded-xl bg-[#18181B] border @error('courier_name') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                                     >
-                                    @error('courier')
+                                    @error('courier_name')
                                         <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -315,9 +317,9 @@
                 <h2 class="text-sm font-semibold text-zinc-100 mb-2">Alamat Pengiriman</h2>
                 <p class="text-sm text-zinc-300 whitespace-pre-line">{{ $shippingAddress }}</p>
 
-                @if (!empty($order->courier) || !empty($order->shipping_courier))
+                @if (!empty($order->courier_name) || !empty($order->courier) || !empty($order->shipping_courier))
                     <div class="pt-2 text-xs text-zinc-400">
-                        Kurir: <span class="font-medium text-zinc-200">{{ $order->courier ?? $order->shipping_courier }}</span>
+                        Kurir: <span class="font-medium text-zinc-200">{{ $order->courier_name ?? $order->courier ?? $order->shipping_courier }}</span>
                     </div>
                 @endif
 
@@ -331,14 +333,17 @@
             <div class="glass-surface rounded-2xl p-5 space-y-2">
                 <h2 class="text-sm font-semibold text-zinc-100 mb-2">Rincian Pembayaran (DOKU Sandbox)</h2>
                 <div class="text-xs text-zinc-400">
-                    Metode: <span class="text-zinc-200">{{ $order->payment_method ?? ($order->payment->method ?? 'DOKU Checkout') }}</span>
+                    Metode: <span class="text-zinc-200">{{ $order->payment_method ?? ($order->payment->method ?? ($order->payment->provider ?? 'DOKU Checkout')) }}</span>
                 </div>
                 <div class="text-xs text-zinc-400">
                     Status: <span class="font-medium text-zinc-200">{{ strtoupper($paymentStatus) }}</span>
                 </div>
-                @if (!empty($order->payment_reference) || !empty($order->payment->reference))
+                @php
+                    $paymentRef = $order->payment_reference ?? ($order->payment->reference ?? ($order->payment->gateway_order_id ?? null));
+                @endphp
+                @if (!empty($paymentRef))
                     <div class="text-xs text-zinc-400">
-                        Referensi Gateway: <span class="font-mono text-zinc-200">{{ $order->payment_reference ?? $order->payment->reference }}</span>
+                        Referensi Gateway: <span class="font-mono text-zinc-200">{{ $paymentRef }}</span>
                     </div>
                 @endif
             </div>

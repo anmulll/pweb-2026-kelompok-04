@@ -80,9 +80,11 @@
                     <tbody class="divide-y divide-white/10 text-sm">
                         @foreach ($items as $order)
                             @php
-                                $orderStatus = strtolower((string) ($order->status ?? 'pending_payment'));
-                                $paymentStatus = strtolower((string) ($order->payment_status ?? ($order->payment->status ?? 'pending')));
-                                $buyerName = $order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? 'Pembeli'));
+                                $rawOrderStatus = $order->status ?? 'pending_payment';
+                                $orderStatus = strtolower($rawOrderStatus instanceof \BackedEnum ? $rawOrderStatus->value : (string) $rawOrderStatus);
+                                $rawPaymentStatus = $order->payment_status ?? ($order->payment?->status ?? 'pending');
+                                $paymentStatus = strtolower($rawPaymentStatus instanceof \BackedEnum ? $rawPaymentStatus->value : (string) $rawPaymentStatus);
+                                $buyerName = $order->recipient_name ?? ($order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? 'Pembeli')));
                                 $totalAmount = $order->total_amount ?? ($order->total ?? 0);
 
                                 $orderBadgeClass = match ($orderStatus) {

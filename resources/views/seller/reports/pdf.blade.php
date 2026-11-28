@@ -92,10 +92,10 @@
 </head>
 <body>
     @php
-        $startDate = $startDate ?? request('start_date');
-        $endDate = $endDate ?? request('end_date');
-        $verifiedRevenue = $verifiedRevenue ?? ($summary['verified_revenue'] ?? 0);
-        $paidOrdersCount = $paidOrdersCount ?? ($summary['paid_orders_count'] ?? 0);
+        $startDate = $startDate ?? ($start_date ?? request('start_date'));
+        $endDate = $endDate ?? ($end_date ?? request('end_date'));
+        $verifiedRevenue = $verifiedRevenue ?? ($total_revenue ?? ($summary['verified_revenue'] ?? 0));
+        $paidOrdersCount = $paidOrdersCount ?? ($total_orders ?? ($summary['paid_orders_count'] ?? 0));
         $items = $transactions ?? ($orders ?? ($reports ?? collect()));
     @endphp
 
@@ -142,16 +142,18 @@
         <tbody>
             @forelse ($items as $row)
                 @php
-                    $orderCode = $row->order_number ?? ($row->code ?? ('#' . $row->id));
-                    $txDate = $row->paid_at ?? ($row->created_at ?? null);
-                    $buyerName = $row->buyer_name ?? ($row->user->name ?? ($row->customer_name ?? 'Pembeli'));
+                    $orderCode = $row->order_code ?? ($row->order_number ?? ($row->code ?? ('#' . $row->id)));
+                    $txDate = $row->payment?->paid_at ?? ($row->paid_at ?? ($row->created_at ?? null));
+                    $buyerName = $row->recipient_name ?? ($row->buyer_name ?? ($row->user->name ?? ($row->customer_name ?? 'Pembeli')));
                     $amount = $row->total_amount ?? ($row->amount ?? ($row->total ?? 0));
+                    $rawStatus = $row->payment_status ?? ($row->payment?->status ?? ($row->status ?? 'Paid'));
+                    $statusLabel = $rawStatus instanceof \BackedEnum ? $rawStatus->value : (string) $rawStatus;
                 @endphp
                 <tr>
                     <td>{{ $orderCode }}</td>
                     <td>{{ $txDate ? \Illuminate\Support\Carbon::parse($txDate)->format('d M Y H:i') : '-' }}</td>
                     <td>{{ $buyerName }}</td>
-                    <td>{{ $row->payment_status ?? ($row->status ?? 'Paid') }}</td>
+                    <td>{{ strtoupper($statusLabel) }}</td>
                     <td class="text-right">Rp {{ number_format((float) $amount, 0, ',', '.') }}</td>
                 </tr>
             @empty

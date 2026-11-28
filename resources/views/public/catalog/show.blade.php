@@ -117,10 +117,48 @@
                 @endif
 
                 <!-- Call to Action -->
-                <div class="pt-4 flex items-center gap-3">
-                    <x-ui.button variant="primary" class="w-full py-3 text-sm">
-                        Tambah ke Keranjang
-                    </x-ui.button>
+                <div class="pt-4">
+                    @if($product->stock <= 0)
+                        <button type="button" disabled class="w-full py-3 px-4 rounded-xl bg-zinc-800 text-zinc-500 border border-zinc-700 text-sm font-medium cursor-not-allowed">
+                            Stok Habis
+                        </button>
+                    @else
+                        @auth
+                            @if(auth()->user()->isBuyer())
+                                <form method="POST" action="{{ route('buyer.cart.store') }}" class="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                    @csrf
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    @if($product->isUsed())
+                                        <input type="hidden" name="quantity" value="1">
+                                    @else
+                                        <div class="sm:w-28">
+                                            <label for="quantity" class="sr-only">Jumlah</label>
+                                            <input
+                                                id="quantity"
+                                                type="number"
+                                                name="quantity"
+                                                value="1"
+                                                min="1"
+                                                max="{{ $product->stock }}"
+                                                class="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-3.5 py-3 text-sm text-white text-center focus:outline-none focus:border-blue-500"
+                                            >
+                                        </div>
+                                    @endif
+                                    <x-ui.button type="submit" variant="primary" class="w-full py-3 text-sm">
+                                        Tambah ke Keranjang
+                                    </x-ui.button>
+                                </form>
+                            @elseif(auth()->user()->isSeller())
+                                <x-ui.button href="{{ route('seller.products.edit', $product) }}" variant="secondary" class="w-full py-3 text-sm">
+                                    Edit Produk di Panel Seller
+                                </x-ui.button>
+                            @endif
+                        @else
+                            <x-ui.button href="{{ route('login') }}" variant="primary" class="w-full py-3 text-sm">
+                                Masuk untuk Membeli
+                            </x-ui.button>
+                        @endauth
+                    @endif
                 </div>
             </div>
         </div>

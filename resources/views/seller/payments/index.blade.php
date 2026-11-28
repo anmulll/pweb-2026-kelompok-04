@@ -27,11 +27,14 @@
                     <tbody class="divide-y divide-white/10 text-sm">
                         @foreach ($items as $payment)
                             @php
-                                $statusRaw = (string) ($payment->status ?? 'pending');
+                                $statusRaw = $payment->status instanceof \BackedEnum
+                                    ? $payment->status->value
+                                    : (string) ($payment->status ?? 'pending');
                                 $statusLower = strtolower($statusRaw);
                                 $isPaid = $statusLower === 'paid';
-                                $orderRef = $payment->order_number ?? ($payment->order->order_number ?? ($payment->order_id ?? '-'));
-                                $referenceCode = $payment->reference ?? ($payment->transaction_id ?? ($payment->code ?? ('PAY-' . $payment->id)));
+                                $isHistorical = ($payment->provider ?? null) === 'midtrans_sandbox';
+                                $orderRef = $payment->order?->order_code ?? ($payment->order_number ?? ($payment->order?->order_number ?? ($payment->order_id ?? '-')));
+                                $referenceCode = $payment->gateway_order_id ?? ($payment->reference ?? ($payment->transaction_id ?? ($payment->code ?? ('PAY-' . $payment->id))));
                                 $amount = $payment->amount ?? ($payment->total ?? 0);
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
@@ -41,7 +44,7 @@
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap text-zinc-300">
-                                    {{ $payment->method ?? ($payment->payment_method ?? ($payment->channel ?? '-')) }}
+                                    {{ $payment->method ?? ($payment->payment_method ?? ($payment->channel ?? ($payment->provider ?? '-'))) }}
                                 </td>
 
                                 <td class="py-3.5 px-4 whitespace-nowrap font-medium text-zinc-100">
@@ -61,8 +64,12 @@
 
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
                                     <div class="inline-flex items-center justify-end gap-2">
-                                        @if ($syncRouteName)
-                                            <form method="POST" action="{{ route($syncRouteName, $payment->id ?? $payment) }}" class="m-0">
+                                        @if ($isHistorical)
+                                            <span class="inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/70 border border-white/10">
+                                                Arsip Historis (Read-Only)
+                                            </span>
+                                        @elseif ($syncRouteName && ($payment->order_id ?? $payment->order?->id))
+                                            <form method="POST" action="{{ route($syncRouteName, $payment->order_id ?? $payment->order->id) }}" class="m-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button

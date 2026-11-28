@@ -18,7 +18,9 @@
     );
 
     $currentImage = $isEdit
-        ? ($promotion->image_url ?? (!empty($promotion->image) ? asset('storage/' . ltrim($promotion->image, '/')) : null))
+        ? (method_exists($promotion, 'imageUrl')
+            ? $promotion->imageUrl()
+            : ($promotion->image_url ?? (!empty($promotion->image) ? asset('storage/' . ltrim($promotion->image, '/')) : null)))
         : null;
 @endphp
 
@@ -49,19 +51,19 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {{-- Nama Promosi --}}
                 <div class="md:col-span-2">
-                    <label for="name" class="block text-sm font-medium text-zinc-200">
-                        Nama Promosi <span class="text-rose-400">*</span>
+                    <label for="title" class="block text-sm font-medium text-zinc-200">
+                        Judul Promosi <span class="text-rose-400">*</span>
                     </label>
                     <input
                         type="text"
-                        id="name"
-                        name="name"
-                        value="{{ old('name', $promotion->name ?? ($promotion->title ?? '')) }}"
+                        id="title"
+                        name="title"
+                        value="{{ old('title', $promotion->title ?? ($promotion->name ?? '')) }}"
                         required
                         placeholder="Contoh: Promo Spesial Akhir Tahun — Diskon Ekosistem Apple"
-                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('name') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('title') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                     >
-                    @error('name')
+                    @error('title')
                         <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
                     @enderror
                 </div>

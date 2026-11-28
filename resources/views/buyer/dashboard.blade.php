@@ -1,136 +1,80 @@
-@extends('layouts.app', ['title' => 'Dashboard Pembeli — iStore'])
+@extends('layouts.app')
+
+@section('title', 'Dashboard Pembeli — iStore')
 
 @section('content')
 @php
-    $user = auth()->user();
-    $ordersQuery = $user ? $user->orders() : null;
-
-    $totalOrders = $totalOrders ?? ($ordersQuery ? (clone $ordersQuery)->count() : 0);
-    $activeOrders = $activeOrders ?? ($ordersQuery ? (clone $ordersQuery)->whereIn('status', [
-        \App\Enums\OrderStatus::PENDING_PAYMENT,
-        \App\Enums\OrderStatus::PAID,
-        \App\Enums\OrderStatus::PROCESSING,
-        \App\Enums\OrderStatus::SHIPPED,
-    ])->count() : 0);
-    $completedOrders = $completedOrders ?? ($ordersQuery ? (clone $ordersQuery)->where('status', \App\Enums\OrderStatus::COMPLETED)->count() : 0);
-    $recentOrders = $recentOrders ?? ($ordersQuery ? (clone $ordersQuery)->with(['items.product', 'payment'])->latest()->take(5)->get() : collect());
+    $buyer = auth()->user();
+    $recentOrders = $buyer->orders()->with(['items', 'payment'])->latest()->take(5)->get();
+    $ordersCount = $buyer->orders()->count();
+    $cartCount = $buyer->cart?->items()->sum('quantity') ?? 0;
 @endphp
 
-<div class="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
-
-    {{-- Welcome Header --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <div class="text-xs font-medium uppercase tracking-wider text-blue-400 mb-1">
+<div class="mx-auto max-w-[1200px] space-y-8 px-4 py-8 sm:px-6 sm:py-10">
+    {{-- Header --}}
+    <div class="glass-surface rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <span class="text-xs font-medium uppercase tracking-wider text-blue-400">
                 Dashboard Pembeli
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                Selamat Datang, {{ $user->name }}
+            </span>
+            <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                Selamat datang, {{ $buyer->name }}
             </h1>
-            <p class="mt-1 text-sm text-zinc-400">
-                Pantau aktivitas belanja, status pengiriman, dan kelola akun iStore Anda.
+            <p class="text-sm text-zinc-400">
+                Kelola keranjang belanja, pantau status pembayaran DOKU, dan lacak pengiriman perangkat Apple Anda.
             </p>
         </div>
-
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap gap-3">
             <x-ui.button href="{{ route('catalog.index') }}" variant="primary">
-                Jelajahi Produk
+                Jelajahi Katalog
             </x-ui.button>
             <x-ui.button href="{{ route('buyer.cart.index') }}" variant="secondary">
-                Lihat Keranjang
+                Keranjang ({{ $cartCount }})
             </x-ui.button>
         </div>
     </div>
 
-    {{-- Bento Grid Ringkasan Pesanan (KPI Cards) --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-        <div class="glass-surface rounded-2xl p-5 sm:p-6 border border-white/10 hover:border-white/20 transition">
-            <div class="flex items-center justify-between text-zinc-400 text-xs font-medium mb-3">
-                <span>TOTAL PESANAN</span>
-                <span class="text-base text-zinc-500">🛍️</span>
-            </div>
-            <div class="text-3xl font-bold text-white tracking-tight">
-                {{ number_format($totalOrders, 0, ',', '.') }}
-            </div>
-            <p class="mt-2 text-xs text-zinc-400">
-                Semua pesanan yang pernah Anda buat
-            </p>
-        </div>
-
-        <div class="glass-surface rounded-2xl p-5 sm:p-6 border border-amber-500/20 bg-amber-950/10 hover:border-amber-500/40 transition">
-            <div class="flex items-center justify-between text-amber-300 text-xs font-medium mb-3">
-                <span>PESANAN AKTIF</span>
-                <span class="text-base text-amber-400">📦</span>
-            </div>
-            <div class="text-3xl font-bold text-amber-200 tracking-tight">
-                {{ number_format($activeOrders, 0, ',', '.') }}
-            </div>
-            <p class="mt-2 text-xs text-amber-300/80">
-                Menunggu pembayaran, diproses, atau dikirim
-            </p>
-        </div>
-
-        <div class="glass-surface rounded-2xl p-5 sm:p-6 border border-emerald-500/20 bg-emerald-950/10 hover:border-emerald-500/40 transition">
-            <div class="flex items-center justify-between text-emerald-300 text-xs font-medium mb-3">
-                <span>PESANAN SELESAI</span>
-                <span class="text-base text-emerald-400">✓</span>
-            </div>
-            <div class="text-3xl font-bold text-emerald-200 tracking-tight">
-                {{ number_format($completedOrders, 0, ',', '.') }}
-            </div>
-            <p class="mt-2 text-xs text-emerald-300/80">
-                Pesanan yang telah sukses diterima
-            </p>
-        </div>
-    </div>
-
-    {{-- Bento Quick Actions --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <a href="{{ route('buyer.orders.index') }}" class="glass-surface rounded-2xl p-5 border border-white/10 hover:border-blue-500/40 hover:bg-zinc-900/60 transition group">
-            <div class="text-lg mb-2">📋</div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-blue-400 transition">Pesanan Saya</h3>
-            <p class="text-xs text-zinc-400 mt-1">Lacak riwayat belanja dan status pengiriman secara rinci.</p>
+    {{-- Quick Access Cards --}}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <a href="{{ route('buyer.orders.index') }}" class="glass-card rounded-2xl p-5 space-y-2 block">
+            <span class="text-xs text-zinc-400">Total Pesanan</span>
+            <div class="text-2xl font-bold text-white">{{ $ordersCount }}</div>
+            <p class="text-xs text-blue-400">Lihat riwayat pesanan</p>
         </a>
 
-        <a href="{{ route('buyer.profile') }}" class="glass-surface rounded-2xl p-5 border border-white/10 hover:border-blue-500/40 hover:bg-zinc-900/60 transition group">
-            <div class="text-lg mb-2">👤</div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-blue-400 transition">Profil Pengguna</h3>
-            <p class="text-xs text-zinc-400 mt-1">Perbarui nomor telepon dan alamat pengiriman default.</p>
+        <a href="{{ route('buyer.cart.index') }}" class="glass-card rounded-2xl p-5 space-y-2 block">
+            <span class="text-xs text-zinc-400">Item di Keranjang</span>
+            <div class="text-2xl font-bold text-white">{{ $cartCount }}</div>
+            <p class="text-xs text-blue-400">Buka keranjang belanja</p>
         </a>
 
-        <a href="{{ route('catalog.index', ['condition' => 'used']) }}" class="glass-surface rounded-2xl p-5 border border-white/10 hover:border-blue-500/40 hover:bg-zinc-900/60 transition group">
-            <div class="text-lg mb-2">🔍</div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-blue-400 transition">Unit Second Terinspeksi</h3>
-            <p class="text-xs text-zinc-400 mt-1">Eksplorasi unit second Apple dengan transparansi kondisi fisik &amp; fungsi.</p>
+        <a href="{{ route('buyer.profile') }}" class="glass-card rounded-2xl p-5 space-y-2 block">
+            <span class="text-xs text-zinc-400">Profil &amp; Alamat</span>
+            <div class="text-base font-semibold text-white truncate">{{ $buyer->phone ?: 'Belum diisi' }}</div>
+            <p class="text-xs text-blue-400">Perbarui informasi pengiriman</p>
+        </a>
+
+        <a href="{{ route('catalog.index', ['condition' => 'used']) }}" class="glass-card rounded-2xl p-5 space-y-2 block">
+            <span class="text-xs text-zinc-400">Unit Second Terinspeksi</span>
+            <div class="text-base font-semibold text-white">Grade A / B / C</div>
+            <p class="text-xs text-blue-400">Lihat katalog unit second</p>
         </a>
     </div>
 
-    {{-- Pesanan Terbaru --}}
-    <div class="glass-surface rounded-2xl border border-white/10 overflow-hidden">
-        <div class="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
-            <div>
-                <h2 class="text-base font-semibold text-white">Pesanan Terbaru</h2>
-                <p class="text-xs text-zinc-400 mt-0.5">Daftar transaksi pesanan terkini pada akun Anda</p>
-            </div>
-            @if ($recentOrders->isNotEmpty())
-                <a href="{{ route('buyer.orders.index') }}" class="text-xs font-medium text-blue-400 hover:text-blue-300 transition">
-                    Lihat Semua Pesanan
-                </a>
-            @endif
+    {{-- Recent Orders --}}
+    <div class="glass-surface overflow-hidden rounded-2xl">
+        <div class="flex items-center justify-between border-b border-white/10 px-6 py-4">
+            <h2 class="text-base font-semibold text-white">Pesanan Terbaru</h2>
+            <a href="{{ route('buyer.orders.index') }}" class="text-xs font-medium text-blue-400 hover:text-blue-300 transition">
+                Lihat Semua
+            </a>
         </div>
 
         @if ($recentOrders->isEmpty())
-            <div class="p-10 text-center space-y-4">
-                <div class="w-12 h-12 mx-auto rounded-full bg-zinc-800/80 flex items-center justify-center text-xl text-zinc-400">
-                    📦
-                </div>
-                <div>
-                    <h3 class="text-sm font-medium text-zinc-200">Belum Ada Pesanan</h3>
-                    <p class="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-                        Anda belum pernah membuat pesanan di iStore. Temukan perangkat Apple impian Anda di katalog sekarang.
-                    </p>
-                </div>
-                <div>
+            <div class="px-6 py-14 text-center space-y-3">
+                <p class="text-sm font-medium text-zinc-200">Belum ada pesanan</p>
+                <p class="text-xs text-zinc-400">Riwayat transaksi Anda akan muncul di sini setelah melakukan checkout.</p>
+                <div class="pt-2">
                     <x-ui.button href="{{ route('catalog.index') }}" variant="primary">
                         Mulai Belanja
                     </x-ui.button>
@@ -140,53 +84,24 @@
             <div class="divide-y divide-white/10">
                 @foreach ($recentOrders as $order)
                     @php
-                        $statusValue = $order->status instanceof \BackedEnum ? $order->status->value : (string) $order->status;
-                        $paymentStatusValue = $order->payment?->status instanceof \BackedEnum ? $order->payment->status->value : (string) ($order->payment?->status ?? 'pending');
-
-                        $statusBadgeClass = match ($statusValue) {
-                            'paid' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-                            'processing' => 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-                            'shipped' => 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-                            'completed' => 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40',
-                            'cancelled' => 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-                            default => 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-                        };
-
-                        $statusLabel = match ($statusValue) {
-                            'paid' => 'Dibayar',
-                            'processing' => 'Diproses',
-                            'shipped' => 'Dikirim',
-                            'completed' => 'Selesai',
-                            'cancelled' => 'Dibatalkan',
-                            default => 'Menunggu Pembayaran',
-                        };
+                        $statusVal = $order->status instanceof \BackedEnum ? $order->status->value : (string) $order->status;
                     @endphp
-
-                    <div class="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-900/40 transition">
-                        <div class="space-y-1.5">
-                            <div class="flex items-center gap-2.5">
-                                <span class="font-mono text-sm font-semibold text-white">
-                                    {{ $order->order_code }}
-                                </span>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $statusBadgeClass }}">
-                                    {{ $statusLabel }}
-                                </span>
-                            </div>
+                    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 hover:bg-zinc-900/50 transition">
+                        <div class="space-y-0.5">
+                            <div class="font-mono text-sm font-semibold text-white">{{ $order->order_code }}</div>
                             <div class="text-xs text-zinc-400">
-                                Dipesan pada {{ $order->created_at->format('d M Y, H:i') }} &bull; {{ $order->items->count() }} item produk
+                                {{ $order->created_at->format('d M Y, H:i') }} • {{ $order->items->count() }} item
                             </div>
                         </div>
-
-                        <div class="flex items-center justify-between sm:justify-end gap-4">
-                            <div class="text-left sm:text-right">
-                                <div class="text-xs text-zinc-400">Total Pembayaran</div>
-                                <div class="text-sm font-semibold text-white">
+                        <div class="flex items-center gap-4">
+                            <div class="text-right">
+                                <div class="text-sm font-bold text-white">
                                     Rp {{ number_format($order->total_amount, 0, ',', '.') }}
                                 </div>
+                                <div class="text-[11px] uppercase tracking-wide text-zinc-400">{{ str_replace('_', ' ', $statusVal) }}</div>
                             </div>
-
-                            <x-ui.button href="{{ route('buyer.orders.show', $order) }}" variant="secondary">
-                                Rincian Pesanan
+                            <x-ui.button href="{{ route('buyer.orders.show', $order) }}" variant="secondary" class="text-xs py-1.5 px-3">
+                                Detail
                             </x-ui.button>
                         </div>
                     </div>
@@ -194,6 +109,5 @@
             </div>
         @endif
     </div>
-
 </div>
 @endsection

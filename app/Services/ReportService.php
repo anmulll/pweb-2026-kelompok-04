@@ -56,15 +56,21 @@ class ReportService
         }
 
         $orders = $query->get();
-        $totalRevenue = $orders->where('payment.status', PaymentStatus::PAID)->sum('total_amount');
+        $paidOrders = $orders->filter(fn ($order) => $order->payment?->status === PaymentStatus::PAID);
+        $totalRevenue = (float) $paidOrders->sum('total_amount');
         $totalOrders = $orders->count();
+        $paidOrdersCount = $paidOrders->count();
 
         return [
             'orders' => $orders,
             'total_revenue' => $totalRevenue,
+            'verifiedRevenue' => $totalRevenue,
             'total_orders' => $totalOrders,
+            'paidOrdersCount' => $paidOrdersCount,
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ];
     }
 }

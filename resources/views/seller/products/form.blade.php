@@ -7,7 +7,9 @@
 
     $categoryOptions = $categories ?? collect();
     $currentImage = $isEdit
-        ? ($product->image_url ?? (!empty($product->image) ? asset('storage/' . ltrim($product->image, '/')) : null))
+        ? (method_exists($product, 'imageUrl')
+            ? $product->imageUrl()
+            : ($product->image_url ?? (!empty($product->image) ? asset('storage/' . ltrim($product->image, '/')) : null)))
         : null;
 
     $rawCondition = old('condition', $product->condition ?? 'new');
@@ -124,6 +126,42 @@
                     @enderror
                 </div>
 
+                {{-- Kapasitas Penyimpanan --}}
+                <div>
+                    <label for="storage" class="block text-sm font-medium text-zinc-200">
+                        Kapasitas Penyimpanan
+                    </label>
+                    <input
+                        type="text"
+                        id="storage"
+                        name="storage"
+                        value="{{ old('storage', $product->storage ?? '') }}"
+                        placeholder="Contoh: 256GB, 512GB"
+                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('storage') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                    >
+                    @error('storage')
+                        <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Warna --}}
+                <div>
+                    <label for="color" class="block text-sm font-medium text-zinc-200">
+                        Warna Perangkat
+                    </label>
+                    <input
+                        type="text"
+                        id="color"
+                        name="color"
+                        value="{{ old('color', $product->color ?? '') }}"
+                        placeholder="Contoh: Natural Titanium, Space Black"
+                        class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('color') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                    >
+                    @error('color')
+                        <p class="mt-1.5 text-xs text-rose-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 {{-- Kondisi --}}
                 <div>
                     <label for="condition" class="block text-sm font-medium text-zinc-200">
@@ -234,7 +272,8 @@
                             Grade Fisik <span class="text-rose-400">*</span>
                         </label>
                         @php
-                            $selectedGrade = old('condition_grade', $product->condition_grade ?? 'A');
+                            $rawGrade = old('condition_grade', $product->condition_grade ?? 'A');
+                            $selectedGrade = $rawGrade instanceof \BackedEnum ? $rawGrade->value : (string) $rawGrade;
                         @endphp
                         <select
                             id="condition_grade"
@@ -276,15 +315,19 @@
                             Status Fungsional <span class="text-rose-400">*</span>
                         </label>
                         @php
-                            $selectedFunc = old('functional_status', $product->functional_status ?? 'normal');
+                            $rawFunc = old('functional_status', $product->functional_status ?? 'normal');
+                            $selectedFunc = $rawFunc instanceof \BackedEnum ? $rawFunc->value : (string) $rawFunc;
                         @endphp
                         <select
                             id="functional_status"
                             name="functional_status"
                             class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('functional_status') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400 transition"
                         >
-                            <option value="normal" @selected($selectedFunc === 'normal')>Normal — Seluruh Fitur Berfungsi</option>
-                            <option value="minus" @selected($selectedFunc === 'minus')>Minus — Ada Kendala Fungsi</option>
+                            <option value="normal" @selected(in_array(strtolower($selectedFunc), ['normal', 'semua normal'], true))>Normal — Seluruh Fitur Berfungsi</option>
+                            <option value="minus" @selected(in_array(strtolower($selectedFunc), ['minus', 'ada minus'], true))>Minus — Ada Kendala Fungsi</option>
+                            @if ($selectedFunc !== '' && !in_array(strtolower($selectedFunc), ['normal', 'semua normal', 'minus', 'ada minus'], true))
+                                <option value="{{ $selectedFunc }}" selected>{{ $selectedFunc }}</option>
+                            @endif
                         </select>
                         @error('functional_status')
                             <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
@@ -295,18 +338,18 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {{-- Kelengkapan --}}
                     <div>
-                        <label for="accessories" class="block text-xs font-medium text-zinc-300">
+                        <label for="included_accessories" class="block text-xs font-medium text-zinc-300">
                             Kelengkapan Aksesori
                         </label>
                         <input
                             type="text"
-                            id="accessories"
-                            name="accessories"
-                            value="{{ old('accessories', $product->accessories ?? '') }}"
+                            id="included_accessories"
+                            name="included_accessories"
+                            value="{{ old('included_accessories', $product->included_accessories ?? ($product->accessories ?? '')) }}"
                             placeholder="Contoh: Fullset Box Original + Kabel USB-C"
-                            class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('accessories') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                            class="mt-1.5 w-full rounded-xl bg-[#18181B] border @error('included_accessories') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
                         >
-                        @error('accessories')
+                        @error('included_accessories')
                             <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
                         @enderror
                     </div>

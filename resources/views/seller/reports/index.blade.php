@@ -4,8 +4,9 @@
         $endDate = request('end_date',$endDate ?? '');
 
         // Seluruh angka ringkasan berasal dari controller / ReportService (tidak dihitung ulang di Blade)
-        $verifiedRevenue =$verifiedRevenue ?? ($summary['verified_revenue'] ?? 0);$paidOrdersCount = $paidOrdersCount ?? ($summary['paid_orders_count'] ?? 0);
-        $items =$transactions ?? ($orders ?? ($reports ?? collect()));
+        $verifiedRevenue = $verifiedRevenue ?? ($total_revenue ?? ($summary['verified_revenue'] ?? 0));
+        $paidOrdersCount = $paidOrdersCount ?? ($total_orders ?? ($summary['paid_orders_count'] ?? 0));
+        $items = $transactions ?? ($orders ?? ($reports ?? collect()));
 
         $pdfUrl = Route::has('seller.reports.pdf')
             ? route('seller.reports.pdf', array_filter([
@@ -23,7 +24,7 @@
             @if (Route::has('seller.reports.pdf'))
                 <a
                     href="{{ $pdfUrl }}"
-                    class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-950 bg-zinc-100 hover:bg-white transition"
+                    class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition"
                 >
                     Unduh Laporan PDF
                 </a>
@@ -137,9 +138,12 @@
                     <tbody class="divide-y divide-white/10 text-sm">
                         @foreach ($items as $row)
                             @php
-                                $orderCode = $row->order_number ?? ($row->code ?? ('#' . $row->id));$txDate = $row->paid_at ?? ($row->created_at ?? null);
-                                $buyerName =$row->buyer_name ?? ($row->user->name ?? ($row->customer_name ?? 'Pembeli'));
-                                $amount =$row->total_amount ?? ($row->amount ?? ($row->total ?? 0));
+                                $orderCode = $row->order_code ?? ($row->order_number ?? ($row->code ?? ('#' . $row->id)));
+                                $txDate = $row->payment?->paid_at ?? ($row->paid_at ?? ($row->created_at ?? null));
+                                $buyerName = $row->recipient_name ?? ($row->buyer_name ?? ($row->user->name ?? ($row->customer_name ?? 'Pembeli')));
+                                $amount = $row->total_amount ?? ($row->amount ?? ($row->total ?? 0));
+                                $rawStatus = $row->payment_status ?? ($row->payment?->status ?? ($row->status ?? 'Paid'));
+                                $statusLabel = $rawStatus instanceof \BackedEnum ? $rawStatus->value : (string) $rawStatus;
                             @endphp
                             <tr class="hover:bg-zinc-900/60 transition">
                                 <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap font-mono text-xs text-zinc-100">
@@ -156,7 +160,7 @@
 
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                                        {{ $row->payment_status ?? ($row->status ?? 'Paid') }}
+                                        {{ strtoupper($statusLabel) }}
                                     </span>
                                 </td>
 

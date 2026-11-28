@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentStatusSyncService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -42,16 +43,25 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function sync(Request $request, Order $order): JsonResponse
+    public function sync(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         $payment = $order->payment;
 
         if ($payment && $payment->provider === 'midtrans_sandbox') {
-            return response()->json(['message' => 'Transaksi arsip historis tidak dapat disinkronkan.'], 422);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Transaksi arsip historis tidak dapat disinkronkan.'], 422);
+            }
+
+            return redirect()->back()
+                ->with('error', 'Transaksi arsip historis Midtrans bersifat Read-Only dan tidak dapat disinkronkan.');
         }
 
         $result = $this->syncService->syncPaymentStatus($order);
 
-        return response()->json($result);
+        if ($request->expectsJson()) {
+            return response()->json($result);
+        }
+
+        return redirect()->back()->with('success', 'Status pembayaran berhasil disinkronkan.');
     }
 }

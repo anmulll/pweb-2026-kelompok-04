@@ -15,9 +15,15 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
+        $status = $request->input('status');
+
         $orders = Order::with(['items.product', 'payment', 'user'])
+            ->when(! empty($status) && $status !== 'all', function ($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         if ($request->wantsJson()) {
             return response()->json($orders);
