@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Seller\ShipOrderRequest;
 use App\Models\Order;
 use App\Services\OrderStatusService;
 use Illuminate\Http\Request;
@@ -58,12 +59,9 @@ class OrderController extends Controller
         return redirect()->route('seller.orders.show', $order)->with('success', 'Pesanan berhasil ditandai Diproses.');
     }
 
-    public function ship(Request $request, Order $order)
+    public function ship(ShipOrderRequest $request, Order $order)
     {
-        $validated = $request->validate([
-            'courier_name' => 'required|string|max:100',
-            'tracking_number' => 'required|string|max:100',
-        ]);
+        $validated = $request->validated();
 
         $this->orderStatusService->markAsShipped($order, $validated['courier_name'], $validated['tracking_number']);
 
