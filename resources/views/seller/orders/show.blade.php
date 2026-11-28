@@ -1,94 +1,448 @@
-@extends('layouts.seller', ['title' => 'Detail Pesanan ' . $order->order_code])
+@php
+    $orderNumber = $order->order_number ?? ($order->order_code ?? ($order->code ?? ('#' . ($order->id ?? ''))));
+    $rawOrderStatus = $order->status ?? 'pending_payment';
+    $orderStatus = strtolower($rawOrderStatus instanceof \BackedEnum ? $rawOrderStatus->value : (string) $rawOrderStatus);
+    $rawPaymentStatus = $order->payment_status ?? ($order->payment->status ?? 'pending');
+    $paymentStatus = strtolower($rawPaymentStatus instanceof \BackedEnum ? $rawPaymentStatus->value : (string) $rawPaymentStatus);
 
-@section('content')
-<div class="w-full py-8 px-6">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-white">Pesanan #{{ $order->order_code }}</h1>
-            <p class="text-sm text-zinc-400 mt-1">Pembeli: {{ $order->recipient_name }} | Status: {{ $order->status->label() }}</p>
-        </div>
-    </div>
+    $buyerName = $order->recipient_name ?? ($order->buyer_name ?? ($order->user->name ?? ($order->customer_name ?? '-')));
+    $buyerEmail = $order->buyer_email ?? ($order->user->email ?? '-');
+    $buyerPhone = $order->recipient_phone ?? ($order->buyer_phone ?? ($order->shipping_phone ?? ($order->phone ?? '-')));
 
-    @if(session('success'))
-        <div class="mb-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-            {{ session('success') }}
+    $shippingAddress = $order->shipping_address ?? ($order->address ?? '-');
+    $courierName = old('courier_name', $order->courier_name ?? ($order->courier ?? ($order->shipping_courier ?? '')));
+    $trackingNumber = old('tracking_number', $order->tracking_number ?? ($order->resi ?? ''));
+
+    $orderItems = $order->items ?? ($order->orderItems ?? collect());
+    $totalAmount = $order->total_amount ?? ($order->total ?? 0);
+
+    // Aturan State Machine Pemenuhan Pesanan
+    $canProcess = $orderStatus === 'paid';
+    $canShip = $orderStatus === 'processing' || $orderStatus === 'paid';
+    $canCancel = in_array($orderStatus, ['pending_payment', 'paid', 'processing'], true);
+    $isPendingPayment = $orderStatus === 'pending_payment' && $paymentStatus === 'pending';
+
+    $orderBadgeClass = match ($orderStatus) {
+        'paid' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+        'processing' => 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+        'shipped' => 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+        'completed' => 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40',
+        'cancelled' => 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+        default => 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    };
+
+    $orderLabel = match ($orderStatus) {
+        'paid' => 'Dibayar',
+        'processing' => 'Diproses',
+        'shipped' => 'Dikirim',
+        'completed' => 'Selesai',
+        'cancelled' => 'Dibatalkan',
+        default => 'Menunggu Pembayaran',
+    };
+
+    $paymentBadgeClass = match ($paymentStatus) {
+        'paid' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+        'failed', 'expired', 'cancelled' => 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+        default => 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    };
+
+    $statusEndpoint = Route::has('seller.orders.payment.status')
+        ? route('seller.orders.payment.status', $order->id ?? 0)
+        : null;
+@endphp
+
+<x-seller-layout :title="'Pesanan ' . $orderNumber">
+    <x-seller.page-header
+        :title="'Detail Pesanan ' . $orderNumber"
+        subtitle="Periksa informasi pembeli, verifikasi pembayaran DOKU, rincian unit terinspeksi, dan pemenuhan pesanan."
+    >
+        <x-slot:actions>
+            @if ($isPendingPayment && $statusEndpoint)
+                <button
+                    type="button"
+                    id="manual-status-check-btn"
+                    class="inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 transition cursor-pointer"
+                >
+                    Cek Status Pembayaran
+                </button>
+            @endif
+
+            @if (Route::has('seller.orders.index'))
+                <a
+                    href="{{ route('seller.orders.index') }}"
+                    class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
+                >
+                    Kembali ke Daftar
+                </a>
+            @endif
+        </x-slot:actions>
+    </x-seller.page-header>
+
+    {{-- Notifikasi Auto-Refresh Polling Aktif --}}
+    @if ($isPendingPayment)
+        <div id="polling-banner" class="mb-6 rounded-2xl glass-surface bg-amber-950/20 border border-amber-500/30 px-4 py-3 flex items-center justify-between text-xs sm:text-sm text-amber-200">
+            <div class="flex items-center gap-2.5">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span>Memantau pembayaran pembeli secara otomatis... Halaman akan memuat ulang seketika setelah pembayaran terverifikasi di DOKU.</span>
+            </div>
+            <span id="polling-timer" class="text-xs text-amber-400/80 font-mono hidden sm:inline">5s</span>
         </div>
     @endif
 
-    @if(session('error'))
-        <div class="mb-4 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="md:col-span-2 space-y-6">
-            <div class="p-6 bg-zinc-900 border border-zinc-800 rounded-xl space-y-4">
-                <h3 class="text-base font-medium text-white border-b border-zinc-800 pb-3">Item Pesanan</h3>
-                @foreach($order->items as $item)
-                    <div class="flex justify-between items-center text-sm">
-                        <div>
-                            <p class="font-medium text-white">{{ $item->product_name_snapshot }}</p>
-                            <p class="text-xs text-zinc-400">SKU: {{ $item->sku_snapshot }} | Qty: {{ $item->quantity }}</p>
-                        </div>
-                        <p class="text-white">Rp {{ number_format($item->line_total, 0, ',', '.') }}</p>
-                    </div>
-                @endforeach
-            </div>
-
-            <div class="p-6 bg-zinc-900 border border-zinc-800 rounded-xl space-y-2 text-sm">
-                <h3 class="text-base font-medium text-white border-b border-zinc-800 pb-3">Alamat Pengiriman</h3>
-                <p class="text-zinc-300">{{ $order->recipient_name }} ({{ $order->recipient_phone }})</p>
-                <p class="text-zinc-400">{{ $order->shipping_address }}</p>
+    {{-- Status Ringkas --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="glass-surface rounded-2xl p-4 sm:p-5">
+            <div class="text-xs text-zinc-400">Status Pesanan</div>
+            <div class="mt-2 flex items-center gap-2">
+                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border {{ $orderBadgeClass }}">
+                    {{ $orderLabel }}
+                </span>
             </div>
         </div>
 
-        <div class="p-6 bg-zinc-900 border border-zinc-800 rounded-xl space-y-6 h-fit">
-            <h3 class="text-base font-medium text-white border-b border-zinc-800 pb-3">Tindakan Pemrosesan</h3>
-
-            @if($order->status === \App\Enums\OrderStatus::PAID)
-                <form method="POST" action="{{ route('seller.orders.process', $order->id) }}">
-                    @csrf
-                    <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-sm transition">
-                        Tandai Sedang Diproses
-                    </button>
-                </form>
-            @endif
-
-            @if($order->status === \App\Enums\OrderStatus::PROCESSING)
-                <form method="POST" action="{{ route('seller.orders.ship', $order->id) }}" class="space-y-3">
-                    @csrf
-                    <div>
-                        <label class="block text-xs font-medium text-zinc-400 mb-1">Kurir</label>
-                        <input type="text" name="courier_name" placeholder="cth: JNE / SiCepat" required class="w-full px-3 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-zinc-400 mb-1">Nomor Resi</label>
-                        <input type="text" name="tracking_number" placeholder="Nomor Resi Pengiriman" required class="w-full px-3 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded text-white">
-                    </div>
-                    <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-sm transition">
-                        Tandai Dikirim
-                    </button>
-                </form>
-            @endif
-
-            @if($order->canBeCancelled() && ! $order->isCompleted())
-                <form method="POST" action="{{ route('seller.orders.cancel', $order->id) }}">
-                    @csrf
-                    <button type="submit" onclick="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')" class="w-full py-2 bg-rose-600/20 border border-rose-500/30 hover:bg-rose-600/30 text-rose-400 font-medium rounded-lg text-sm transition">
-                        Batalkan Pesanan (Restock)
-                    </button>
-                </form>
-            @endif
-
-            {{-- Auto-refresh meta attribute --}}
-            <div id="order-meta"
-                 data-order-id="{{ $order->id }}"
-                 data-order-status="{{ $order->status->value }}"
-                 data-payment-status="{{ $order->payment?->status->value ?? 'none' }}"
-                 data-status-url="{{ route('seller.orders.payment.status', $order->id) }}">
+        <div class="glass-surface rounded-2xl p-4 sm:p-5">
+            <div class="text-xs text-zinc-400">Status Pembayaran Gateway DOKU</div>
+            <div class="mt-2 flex items-center gap-2">
+                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border {{ $paymentBadgeClass }}">
+                    {{ strtoupper($paymentStatus) }}
+                </span>
+                <span class="text-xs text-zinc-400">Sandbox Terverifikasi</span>
             </div>
         </div>
     </div>
-</div>
-@endsection
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- Kolom Kiri: Item Pesanan & Tindakan --}}
+        <div class="lg:col-span-2 space-y-6">
+            <div class="glass-surface rounded-2xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-zinc-100">Item Pesanan (Snapshot Permanen)</h2>
+                    <span class="text-xs text-zinc-400">{{ count($orderItems) }} item</span>
+                </div>
+
+                @if (count($orderItems) > 0)
+                    <div class="w-full overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
+                                    <th class="py-3 px-5">Produk &amp; Kondisi</th>
+                                    <th class="py-3 px-4">Harga Satuan</th>
+                                    <th class="py-3 px-4 text-center">Qty</th>
+                                    <th class="py-3 px-5 text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/10 text-sm">
+                                @foreach ($orderItems as $item)
+                                    @php
+                                        $itemName = $item->product_name_snapshot ?? ($item->product_name ?? ($item->name ?? ($item->product->name ?? 'Item')));
+                                        $itemSku = $item->sku_snapshot ?? ($item->sku ?? ($item->product->sku ?? null));
+                                        $itemPrice = $item->unit_price_snapshot ?? ($item->price ?? ($item->unit_price ?? 0));
+                                        $itemQty = $item->quantity ?? ($item->qty ?? 1);
+                                        $itemSubtotal = $item->line_total ?? ($item->subtotal ?? ($item->total ?? ((float) $itemPrice * (int) $itemQty)));
+
+                                        $rawCond = $item->condition_snapshot ?? ($item->condition ?? ($item->product?->condition ?? 'new'));
+                                        $itemCond = strtolower($rawCond instanceof \BackedEnum ? $rawCond->value : (string) $rawCond);
+                                        $isItemUsed = in_array($itemCond, ['used', 'second', 'bekas', 'bekas mulus'], true);
+                                        $rawGrade = $item->condition_grade_snapshot ?? ($item->condition_grade ?? ($item->grade ?? ($item->product?->condition_grade ?? null)));
+                                        $itemGrade = $rawGrade instanceof \BackedEnum ? $rawGrade->value : $rawGrade;
+                                        $itemBH = $item->battery_health_snapshot ?? ($item->battery_health ?? ($item->product?->battery_health ?? null));
+                                    @endphp
+                                    <tr>
+                                        <td class="py-3.5 px-5">
+                                            <div class="font-medium text-zinc-100">{{ $itemName }}</div>
+                                            <div class="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                                                @if ($itemSku)
+                                                    <span class="font-mono text-zinc-400">{{ $itemSku }}</span>
+                                                @endif
+
+                                                @if ($isItemUsed)
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.2 text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                                        Second @if ($itemGrade) — Grade {{ strtoupper((string) $itemGrade) }} @endif
+                                                    </span>
+                                                    @if ($itemBH)
+                                                        <span class="text-zinc-400 text-[11px]">BH {{ $itemBH }}%</span>
+                                                    @endif
+                                                @else
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.2 text-[11px] font-medium bg-zinc-800 text-zinc-300 border border-white/10">
+                                                        Baru
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap text-zinc-300">
+                                            Rp {{ number_format((float) $itemPrice, 0, ',', '.') }}
+                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap text-center text-zinc-300">
+                                            {{ $itemQty }}
+                                        </td>
+                                        <td class="py-3.5 px-5 whitespace-nowrap text-right font-medium text-zinc-100">
+                                            Rp {{ number_format((float) $itemSubtotal, 0, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="p-6 text-xs text-zinc-400">
+                        Rincian item pesanan belum tersedia.
+                    </div>
+                @endif
+
+                <div class="px-5 py-4 border-t border-white/10 bg-[#18181B]/50 flex items-center justify-between">
+                    <span class="text-sm font-medium text-zinc-300">Total Pembayaran</span>
+                    <span class="text-base font-semibold text-zinc-100">
+                        Rp {{ number_format((float) $totalAmount, 0, ',', '.') }}
+                    </span>
+                </div>
+            </div>
+
+            {{-- Aksi Pemenuhan Pesanan (Fulfillment Actions) --}}
+            <div class="glass-surface rounded-2xl p-5 space-y-5">
+                <div>
+                    <h2 class="text-sm font-semibold text-zinc-100">Tindakan Pemenuhan Pesanan</h2>
+                    <p class="text-xs text-zinc-400 mt-0.5">
+                        Transisi status mengikuti siklus: Dibayar &rarr; Diproses &rarr; Dikirim (wajib kurir &amp; resi).
+                    </p>
+                </div>
+
+                {{-- Aksi 1: Tandai Sedang Diproses --}}
+                @if ($canProcess && Route::has('seller.orders.process'))
+                    <div class="pt-2">
+                        <form method="POST" action="{{ route('seller.orders.process', $order->id ?? $order) }}" class="m-0">
+                            @csrf
+                            @method('PATCH')
+                            <button
+                                type="submit"
+                                class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-950 bg-zinc-100 hover:bg-white transition cursor-pointer"
+                            >
+                                Tandai Diproses
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
+                {{-- Aksi 2: Kirim Pesanan (Wajib Kurir & Resi) --}}
+                @if ($canShip && Route::has('seller.orders.ship'))
+                    <div class="pt-3 border-t border-white/10 space-y-4">
+                        <div class="text-xs font-medium text-zinc-200">Kirim Pesanan ke Ekspedisi:</div>
+                        <form method="POST" action="{{ route('seller.orders.ship', $order->id ?? $order) }}" class="space-y-4">
+                            @csrf
+                            @method('PATCH')
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="courier_name" class="block text-xs font-medium text-zinc-300 mb-1.5">
+                                        Nama Kurir Pengiriman <span class="text-rose-400">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="courier_name"
+                                        name="courier_name"
+                                        value="{{ $courierName }}"
+                                        required
+                                        placeholder="Contoh: JNE YES, SiCepat BEST, Paxel"
+                                        class="w-full rounded-xl bg-[#18181B] border @error('courier_name') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                                    >
+                                    @error('courier_name')
+                                        <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="tracking_number" class="block text-xs font-medium text-zinc-300 mb-1.5">
+                                        Nomor Resi Pengiriman <span class="text-rose-400">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="tracking_number"
+                                        name="tracking_number"
+                                        value="{{ $trackingNumber }}"
+                                        required
+                                        placeholder="Contoh: JNE1234567890"
+                                        class="w-full rounded-xl bg-[#18181B] border @error('tracking_number') border-rose-500/70 @else border-white/15 @enderror px-3.5 py-2 text-sm font-mono text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition"
+                                    >
+                                    @error('tracking_number')
+                                        <p class="mt-1 text-xs text-rose-400">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-zinc-950 bg-zinc-100 hover:bg-white transition cursor-pointer"
+                            >
+                                Tandai Dikirim &amp; Simpan Resi
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
+                {{-- Aksi 3: Batalkan Pesanan (Sebelum Dikirim) --}}
+                @if ($canCancel && Route::has('seller.orders.cancel'))
+                    <div class="pt-3 border-t border-white/10">
+                        <form
+                            method="POST"
+                            action="{{ route('seller.orders.cancel', $order->id ?? $order) }}"
+                            onsubmit="return confirm('Yakin ingin membatalkan pesanan ini? Stok produk akan dikembalikan secara otomatis.');"
+                            class="m-0"
+                        >
+                            @csrf
+                            @method('PATCH')
+                            <button
+                                type="submit"
+                                class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs sm:text-sm font-medium text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 border border-rose-500/30 transition cursor-pointer"
+                            >
+                                Batalkan Pesanan
+                            </button>
+                        </form>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Kolom Kanan: Detail Pembeli, Alamat & Pembayaran --}}
+        <div class="space-y-6">
+            <div class="glass-surface rounded-2xl p-5 space-y-2">
+                <h2 class="text-sm font-semibold text-zinc-100 mb-2">Informasi Pembeli</h2>
+                <div class="text-sm font-medium text-zinc-200">{{ $buyerName }}</div>
+                <div class="text-xs text-zinc-400">{{ $buyerEmail }}</div>
+                <div class="text-xs text-zinc-400">{{ $buyerPhone }}</div>
+            </div>
+
+            <div class="glass-surface rounded-2xl p-5 space-y-2">
+                <h2 class="text-sm font-semibold text-zinc-100 mb-2">Alamat Pengiriman</h2>
+                <p class="text-sm text-zinc-300 whitespace-pre-line">{{ $shippingAddress }}</p>
+
+                @if (!empty($order->courier_name) || !empty($order->courier) || !empty($order->shipping_courier))
+                    <div class="pt-2 text-xs text-zinc-400">
+                        Kurir: <span class="font-medium text-zinc-200">{{ $order->courier_name ?? $order->courier ?? $order->shipping_courier }}</span>
+                    </div>
+                @endif
+
+                @if (!empty($order->tracking_number) || !empty($order->resi))
+                    <div class="text-xs text-zinc-400">
+                        Nomor Resi: <span class="font-mono text-zinc-200">{{ $order->tracking_number ?? $order->resi }}</span>
+                    </div>
+                @endif
+            </div>
+
+            <div class="glass-surface rounded-2xl p-5 space-y-2">
+                <h2 class="text-sm font-semibold text-zinc-100 mb-2">Rincian Pembayaran (DOKU Sandbox)</h2>
+                <div class="text-xs text-zinc-400">
+                    Metode: <span class="text-zinc-200">{{ $order->payment_method ?? ($order->payment->method ?? ($order->payment->provider ?? 'DOKU Checkout')) }}</span>
+                </div>
+                <div class="text-xs text-zinc-400">
+                    Status: <span class="font-medium text-zinc-200">{{ strtoupper($paymentStatus) }}</span>
+                </div>
+                @php
+                    $paymentRef = $order->payment_reference ?? ($order->payment->reference ?? ($order->payment->gateway_order_id ?? null));
+                @endphp
+                @if (!empty($paymentRef))
+                    <div class="text-xs text-zinc-400">
+                        Referensi Gateway: <span class="font-mono text-zinc-200">{{ $paymentRef }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- Script Auto-Refresh Polling Status Pembayaran (ADR-04 & FR-PAY-05) --}}
+    @if ($isPendingPayment && $statusEndpoint)
+        <script>
+            (function () {
+                const statusEndpoint = @json($statusEndpoint);
+                const initialOrderStatus = @json($orderStatus);
+                const initialPaymentStatus = @json($paymentStatus);
+                const timerEl = document.getElementById('polling-timer');
+                const manualCheckBtn = document.getElementById('manual-status-check-btn');
+
+                let countdown = 5;
+                let pollInterval = null;
+
+                async function checkStatus() {
+                    try {
+                        const response = await fetch(statusEndpoint, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) return;
+
+                        const data = await response.json();
+                        const newOrderStatus = String(data.order_status || '').toLowerCase();
+                        const newPaymentStatus = String(data.payment_status || '').toLowerCase();
+
+                        // Reload otomatis hanya jika status berubah
+                        if (
+                            (newOrderStatus && newOrderStatus !== initialOrderStatus) ||
+                            (newPaymentStatus && newPaymentStatus !== initialPaymentStatus)
+                        ) {
+                            window.location.reload();
+                        }
+                    } catch (e) {
+                        // Silent catch untuk menjaga kelancaran antarmuka
+                    }
+                }
+
+                function tick() {
+                    countdown--;
+                    if (timerEl) {
+                        timerEl.textContent = countdown + 's';
+                    }
+
+                    if (countdown <= 0) {
+                        countdown = 5;
+                        if (!document.hidden) {
+                            checkStatus();
+                        }
+                    }
+                }
+
+                function startPolling() {
+                    if (!pollInterval) {
+                        pollInterval = setInterval(tick, 1000);
+                    }
+                }
+
+                function stopPolling() {
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                }
+
+                // Berhenti saat tab browser tidak aktif, cek langsung saat kembali aktif
+                document.addEventListener('visibilitychange', function () {
+                    if (document.hidden) {
+                        stopPolling();
+                    } else {
+                        countdown = 5;
+                        checkStatus();
+                        startPolling();
+                    }
+                });
+
+                if (manualCheckBtn) {
+                    manualCheckBtn.addEventListener('click', function () {
+                        manualCheckBtn.disabled = true;
+                        manualCheckBtn.textContent = 'Memeriksa...';
+                        checkStatus().finally(() => {
+                            setTimeout(() => {
+                                manualCheckBtn.disabled = false;
+                                manualCheckBtn.textContent = 'Cek Status Pembayaran';
+                            }, 1500);
+                        });
+                    });
+                }
+
+                startPolling();
+            })();
+        </script>
+    @endif
+</x-seller-layout>

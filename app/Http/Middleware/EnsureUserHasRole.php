@@ -11,14 +11,20 @@ class EnsureUserHasRole
     /**
      * Handle an incoming request.
      *
-     * @param  Closure(Request): Response  $next
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
         if ($user === null) {
-            return redirect()->route('login');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            return redirect()->guest(route('login', [], false));
         }
 
         foreach ($roles as $role) {

@@ -5,11 +5,7 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\OrderStatusService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 
 class OrderController extends Controller
 {
@@ -17,64 +13,62 @@ class OrderController extends Controller
         protected OrderStatusService $orderStatusService
     ) {}
 
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request)
     {
-        $orders = Order::with(['items.product', 'payment'])
-            ->where('user_id', $request->user()->id)
+        $status = $request->input('status');
+
+        $orders = Order::where('user_id', $request->user()->id)
+            ->when(! empty($status) && $status !== 'all', function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->with(['items.product', 'payment'])
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         if ($request->wantsJson()) {
             return response()->json($orders);
         }
 
-        return view('buyer.orders.index', compact('orders'));
+        if (view()->exists('buyer.orders.index')) {
+            return view('buyer.orders.index', compact('orders'));
+        }
+
+        return response()->json($orders);
     }
 
-    public function show(Request $request, Order $order): View|JsonResponse
+    public function show(Request $request, Order $order)
     {
-        Gate::authorize('view', $order);
+        $this->authorize('view', $order);
 
-        $order->load(['items.product', 'payment', 'user']);
+        $order->loadMissing(['items.product', 'payment', 'user']);
 
         if ($request->wantsJson()) {
             return response()->json($order);
         }
 
-        return view('buyer.orders.show', compact('order'));
-    }
-
-    public function cancel(Request $request, Order $order): RedirectResponse|JsonResponse
-    {
-        Gate::authorize('cancel', $order);
-
-        $this->orderStatusService->cancelOrder($order, 'cancelled_by_buyer');
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Pesanan berhasil dibatalkan.',
-                'order' => $order->fresh(),
-            ]);
+        if (view()->exists('buyer.orders.show')) {
+            return view('buyer.orders.show', compact('order'));
         }
 
-        return redirect()->route('buyer.orders.show', $order->id)
-            ->with('success', 'Pesanan berhasil dibatalkan.');
+        return response()->json($order);
     }
 
-    public function confirmReceipt(Request $request, Order $order): RedirectResponse|JsonResponse
+    public function cancel(Request $request, Order $order)
     {
-        Gate::authorize('complete', $order);
+        $this->authorize('cancel', $order);
 
-        $this->orderStatusService->confirmReceipt($order, $request->user());
+        $this->orderStatusService->cancelOrder($order, 'Dibatalkan oleh Pembeli');
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Pesanan telah selesai. Terima kasih atas konfirmasi Anda.',
-                'order' => $order->fresh(),
-            ]);
-        }
+        return redirect()->route('buyer.orders.show', $order)->with('success', 'Pesanan berhasil dibatalkan.');
+    }
 
-        return redirect()->route('buyer.orders.show', $order->id)
-            ->with('success', 'Pesanan telah selesai. Terima kasih atas konfirmasi Anda.');
+    public function confirmReceipt(Request $request, Order $order)
+    {
+        $this->authorize('complete', $order);
+
+        $this->orderStatusService->markAsCompleted($order);
+
+        return redirect()->route('buyer.orders.show', $order)->with('success', 'Pesanan telah selesai. Terima kasih!');
     }
 }

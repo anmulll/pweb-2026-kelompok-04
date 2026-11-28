@@ -30,10 +30,30 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'phone' => fake()->numerify('08##########'),
-            'address' => fake()->address(),
+            'default_shipping_address' => fake()->address(),
             'role' => UserRole::Buyer,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Indicate that the model should have the buyer role.
+     */
+    public function buyer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Buyer,
+        ]);
+    }
+
+    /**
+     * Indicate that the model should have the seller role.
+     */
+    public function seller(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Seller,
+        ]);
     }
 
     /**
@@ -43,20 +63,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
-        ]);
-    }
-
-    public function buyer(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'role' => UserRole::Buyer,
-        ]);
-    }
-
-    public function seller(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'role' => UserRole::Seller,
         ]);
     }
 }

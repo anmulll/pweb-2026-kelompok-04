@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -13,11 +11,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Guard: Tolak eksekusi data demo di lingkungan production
+        if (app()->environment('production')) {
+            $this->command->warn('Peringatan: Demo seeder diblokir pada lingkungan Production!');
+            return;
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Panggil seeder secara berurutan sesuai dependency
+        $this->call([
+            UserSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+            PromotionSeeder::class,
+            OrderDemoSeeder::class,
         ]);
     }
 }

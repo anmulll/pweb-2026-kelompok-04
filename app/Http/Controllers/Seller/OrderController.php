@@ -2,16 +2,10 @@
 
 namespace App\Http\Controllers\Seller;
 
-use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Seller\ShipOrderRequest;
 use App\Models\Order;
 use App\Services\OrderStatusService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 
 class OrderController extends Controller
 {
@@ -19,90 +13,67 @@ class OrderController extends Controller
         protected OrderStatusService $orderStatusService
     ) {}
 
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request)
     {
-        $status = $request->query('status');
+        $status = $request->input('status');
 
-        $query = Order::with(['user', 'items.product', 'payment'])->latest();
-
-        if ($status && in_array($status, array_column(OrderStatus::cases(), 'value'), true)) {
-            $query->where('status', $status);
-        }
-
-        $orders = $query->paginate(15);
+        $orders = Order::with(['items.product', 'payment', 'user'])
+            ->when(! empty($status) && $status !== 'all', function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
 
         if ($request->wantsJson()) {
             return response()->json($orders);
         }
 
-        return view('seller.orders.index', compact('orders', 'status'));
+        if (view()->exists('seller.orders.index')) {
+            return view('seller.orders.index', compact('orders'));
+        }
+
+        return response()->json($orders);
     }
 
-    public function show(Request $request, Order $order): View|JsonResponse
+    public function show(Request $request, Order $order)
     {
-        Gate::authorize('view', $order);
-
-        $order->load(['user', 'items.product', 'payment']);
+        $order->loadMissing(['items.product', 'payment', 'user']);
 
         if ($request->wantsJson()) {
             return response()->json($order);
         }
 
-        return view('seller.orders.show', compact('order'));
+        if (view()->exists('seller.orders.show')) {
+            return view('seller.orders.show', compact('order'));
+        }
+
+        return response()->json($order);
     }
 
-    public function process(Request $request, Order $order): RedirectResponse|JsonResponse
+    public function process(Request $request, Order $order)
     {
-        Gate::authorize('view', $order);
-
         $this->orderStatusService->markAsProcessing($order);
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Pesanan ditandai sedang diproses.',
-                'order' => $order->fresh(),
-            ]);
-        }
-
-        return redirect()->route('seller.orders.show', $order->id)
-            ->with('success', 'Pesanan berhasil ditandai sedang diproses.');
+        return redirect()->route('seller.orders.show', $order)->with('success', 'Pesanan berhasil ditandai Diproses.');
     }
 
-    public function ship(ShipOrderRequest $request, Order $order): RedirectResponse|JsonResponse
+    public function ship(Request $request, Order $order)
     {
-        Gate::authorize('view', $order);
+        $validated = $request->validate([
+            'courier_name' => 'required|string|max:100',
+            'tracking_number' => 'required|string|max:100',
+        ]);
 
-        $this->orderStatusService->shipOrder(
-            $order,
-            $request->validated('courier_name'),
-            $request->validated('tracking_number')
-        );
+        $this->orderStatusService->markAsShipped($order, $validated['courier_name'], $validated['tracking_number']);
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Pesanan berhasil dikirim.',
-                'order' => $order->fresh(),
-            ]);
-        }
-
-        return redirect()->route('seller.orders.show', $order->id)
-            ->with('success', 'Pesanan berhasil dikirim dengan nomor resi.');
+        return redirect()->route('seller.orders.show', $order)->with('success', 'Pesanan berhasil ditandai Dikirim.');
     }
 
-    public function cancel(Request $request, Order $order): RedirectResponse|JsonResponse
+    public function cancel(Request $request, Order $order)
     {
-        Gate::authorize('cancel', $order);
+        $this->orderStatusService->cancelOrder($order, 'Dibatalkan oleh Penjual');
 
-        $this->orderStatusService->cancelOrder($order, 'cancelled_by_seller');
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message' => 'Pesanan berhasil dibatalkan dan stok dikembalikan.',
-                'order' => $order->fresh(),
-            ]);
-        }
-
-        return redirect()->route('seller.orders.show', $order->id)
-            ->with('success', 'Pesanan berhasil dibatalkan dan stok produk telah dikembalikan.');
+        return redirect()->route('seller.orders.show', $order)->with('success', 'Pesanan berhasil dibatalkan.');
     }
 }

@@ -1,58 +1,114 @@
-@extends('layouts.seller', ['title' => 'Catatan Pembayaran'])
+<x-seller-layout title="Pembayaran">
+    <x-seller.page-header
+        title="Pemantauan Pembayaran"
+        subtitle="Pantau status pembayaran pesanan dan lakukan sinkronisasi/inquiry status transaksi."
+    />
 
-@section('content')
-<div class="w-full py-8 px-6">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-white">Catatan Pembayaran</h1>
-            <p class="text-xs text-zinc-400 mt-1">Halaman ini bersifat read-only untuk menjaga integritas transaksi keuangan.</p>
-        </div>
-    </div>
+    @php
+        $items = $payments ?? collect();
+        $syncRouteName = Route::has('seller.payments.sync')
+            ? 'seller.payments.sync'
+            : (Route::has('seller.payments.inquiry') ? 'seller.payments.inquiry' : null);
+    @endphp
 
-    @if($payments->isEmpty())
-        <div class="p-8 text-center text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-xl">
-            Belum ada catatan pembayaran.
-        </div>
-    @else
-        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-            <table class="w-full text-left text-sm text-zinc-300">
-                <thead class="bg-zinc-800/50 text-zinc-400 uppercase text-xs">
-                    <tr>
-                        <th class="px-4 py-3">Order Code</th>
-                        <th class="px-4 py-3">Pembeli</th>
-                        <th class="px-4 py-3">Provider</th>
-                        <th class="px-4 py-3">Nominal</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3">Waktu Bayar</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-800">
-                    @foreach($payments as $payment)
-                        <tr>
-                            <td class="px-4 py-3 font-medium text-white">{{ $payment->gateway_order_id }}</td>
-                            <td class="px-4 py-3">{{ $payment->order?->recipient_name ?? '-' }}</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-300">
-                                    {{ $payment->isHistorical() ? 'Midtrans (Arsip)' : 'DOKU Sandbox' }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 font-medium text-white">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-200">
-                                    {{ $payment->status->label() }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-zinc-400">
-                                {{ $payment->paid_at ? $payment->paid_at->format('d M Y, H:i') : '-' }}
-                            </td>
+    <div class="glass-surface rounded-2xl overflow-hidden">
+        @if ($items->count() > 0)
+            <div class="w-full overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 bg-[#18181B]/70 text-xs font-medium text-zinc-400">
+                            <th class="py-3.5 px-4 sm:px-6">Referensi &amp; Pesanan</th>
+                            <th class="py-3.5 px-4">Metode</th>
+                            <th class="py-3.5 px-4">Nominal</th>
+                            <th class="py-3.5 px-4">Status</th>
+                            <th class="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-6">
-            {{ $payments->links() }}
-        </div>
-    @endif
-</div>
-@endsection
+                    </thead>
+                    <tbody class="divide-y divide-white/10 text-sm">
+                        @foreach ($items as $payment)
+                            @php
+                                $statusRaw = $payment->status instanceof \BackedEnum
+                                    ? $payment->status->value
+                                    : (string) ($payment->status ?? 'pending');
+                                $statusLower = strtolower($statusRaw);
+                                $isPaid = $statusLower === 'paid';
+                                $isHistorical = ($payment->provider ?? null) === 'midtrans_sandbox';
+                                $orderRef = $payment->order?->order_code ?? ($payment->order_number ?? ($payment->order?->order_number ?? ($payment->order_id ?? '-')));
+                                $referenceCode = $payment->gateway_order_id ?? ($payment->reference ?? ($payment->transaction_id ?? ($payment->code ?? ('PAY-' . $payment->id))));
+                                $amount = $payment->amount ?? ($payment->total ?? 0);
+                            @endphp
+                            <tr class="hover:bg-zinc-900/60 transition">
+                                <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap">
+                                    <div class="font-mono text-xs font-medium text-zinc-100">{{ $referenceCode }}</div>
+                                    <div class="text-xs text-zinc-400 mt-0.5">Pesanan: {{ $orderRef }}</div>
+                                </td>
+
+                                <td class="py-3.5 px-4 whitespace-nowrap text-zinc-300">
+                                    {{ $payment->method ?? ($payment->payment_method ?? ($payment->channel ?? ($payment->provider ?? '-'))) }}
+                                </td>
+
+                                <td class="py-3.5 px-4 whitespace-nowrap font-medium text-zinc-100">
+                                    Rp {{ number_format((float) $amount, 0, ',', '.') }}
+                                </td>
+
+                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border {{ $isPaid ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-200 border-white/15' }}">
+                                        {{ $statusRaw }}
+                                    </span>
+                                    @if (!empty($payment->updated_at))
+                                        <div class="text-[11px] text-zinc-500 mt-1">
+                                            Update: {{ \Illuminate\Support\Carbon::parse($payment->updated_at)->format('d M Y H:i') }}
+                                        </div>
+                                    @endif
+                                </td>
+
+                                <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
+                                    <div class="inline-flex items-center justify-end gap-2">
+                                        @if ($isHistorical)
+                                            <span class="inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/70 border border-white/10">
+                                                Arsip Historis (Read-Only)
+                                            </span>
+                                        @elseif ($syncRouteName && ($payment->order_id ?? $payment->order?->id))
+                                            <form method="POST" action="{{ route($syncRouteName, $payment->order_id ?? $payment->order->id) }}" class="m-0">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-200 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition cursor-pointer"
+                                                >
+                                                    Sync / Inquiry Status
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if (Route::has('seller.orders.show') && !empty($payment->order))
+                                            <a
+                                                href="{{ route('seller.orders.show', $payment->order->id ?? ($payment->order_id ?? $payment->order)) }}"
+                                                class="inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-[#18181B] hover:bg-zinc-800 border border-white/15 transition"
+                                            >
+                                                Pesanan
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @if (method_exists($items, 'links'))
+                <div class="px-4 sm:px-6 py-4 border-t border-white/10">
+                    {{ $items->withQueryString()->links() }}
+                </div>
+            @endif
+        @else
+            <div class="px-4 py-14 text-center">
+                <p class="text-sm font-medium text-zinc-200">Belum ada data pembayaran</p>
+                <p class="mt-1 text-xs text-zinc-400">
+                    Riwayat pembayaran dan status verifikasi transaksi akan tampil di sini.
+                </p>
+            </div>
+        @endif
+    </div>
+</x-seller-layout>

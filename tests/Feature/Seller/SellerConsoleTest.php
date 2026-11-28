@@ -1,0 +1,266 @@
+<?php
+
+namespace Tests\Feature\Seller;
+
+use App\Models\Category;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\Promotion;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class SellerConsoleTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $seller;
+    private User $buyer;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seller = User::factory()->seller()->create();
+        $this->buyer = User::factory()->buyer()->create();
+    }
+
+    public function test_guest_is_redirected_to_login_for_seller_console(): void
+    {
+        $this->get(route('seller.dashboard'))->assertRedirect(route('login'));
+        $this->get(route('seller.categories.index'))->assertRedirect(route('login'));
+        $this->get(route('seller.products.index'))->assertRedirect(route('login'));
+        $this->get(route('seller.promotions.index'))->assertRedirect(route('login'));
+        $this->get(route('seller.orders.index'))->assertRedirect(route('login'));
+        $this->get(route('seller.payments.index'))->assertRedirect(route('login'));
+        $this->get(route('seller.reports.index'))->assertRedirect(route('login'));
+    }
+
+    public function test_buyer_is_forbidden_from_seller_console(): void
+    {
+        $this->actingAs($this->buyer);
+
+        $this->get(route('seller.dashboard'))->assertForbidden();
+        $this->get(route('seller.categories.index'))->assertForbidden();
+        $this->get(route('seller.products.index'))->assertForbidden();
+        $this->get(route('seller.promotions.index'))->assertForbidden();
+        $this->get(route('seller.orders.index'))->assertForbidden();
+        $this->get(route('seller.payments.index'))->assertForbidden();
+        $this->get(route('seller.reports.index'))->assertForbidden();
+    }
+
+    public function test_seller_can_access_dashboard_with_kpis_and_chart_container(): void
+    {
+        $this->actingAs($this->seller);
+
+        $response = $this->get(route('seller.dashboard'));
+        $response->assertOk();
+        $response->assertSee('Ringkasan Penjual');
+        $response->assertSee('Omzet Terverifikasi (Paid)');
+        $response->assertSee('Jumlah Pesanan');
+        $response->assertSee('Jumlah Produk Aktif');
+        $response->assertSee('Stok Rendah');
+        $response->assertSee('iStore merupakan peritel independen dan tidak berafiliasi secara resmi dengan Apple Inc.', false);
+    }
+
+    public function test_seller_can_view_category_management_pages(): void
+    {
+        $this->actingAs($this->seller);
+
+        $this->get(route('seller.categories.index'))
+            ->assertOk()
+            ->assertSee('Kategori Produk')
+            ->assertSee('Tambah Kategori');
+
+        $this->get(route('seller.categories.create'))
+            ->assertOk()
+            ->assertSee('Tambah Kategori')
+            ->assertSee('Nama Kategori')
+            ->assertSee('Slug URL');
+
+        $category = Category::create([
+            'name' => 'iPhone',
+            'slug' => 'iphone',
+            'is_active' => true,
+        ]);
+
+        $this->get(route('seller.categories.edit', $category))
+            ->assertOk()
+            ->assertSee('Ubah Kategori')
+            ->assertSee('Simpan Perubahan');
+    }
+
+    public function test_seller_can_view_product_management_pages_with_inspection_panel(): void
+    {
+        $this->actingAs($this->seller);
+
+        $this->get(route('seller.products.index'))
+            ->assertOk()
+            ->assertSee('Katalog Produk')
+            ->assertSee('Tambah Produk');
+
+        $createResponse = $this->get(route('seller.products.create'));
+        $createResponse->assertOk();
+        $createResponse->assertSee('Tambah Produk');
+        $createResponse->assertSee('Panel Inspeksi Unit Second');
+        $createResponse->assertSee('Grade Fisik');
+        $createResponse->assertSee('Kesehatan Baterai (BH %)');
+        $createResponse->assertSee('Status Fungsional');
+        $createResponse->assertSee('Kelengkapan Aksesori');
+        $createResponse->assertSee('Informasi Garansi');
+        $createResponse->assertSee('Catatan Kekurangan Fisik &amp; Fungsi', false);
+
+        $category = Category::create([
+            'name' => 'iPhone',
+            'slug' => 'iphone-edit',
+            'is_active' => true,
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'iPhone 15 Pro 256GB',
+            'model' => 'iPhone 15 Pro',
+            'sku' => 'IP15P-256-TEST',
+            'condition' => 'new',
+            'price' => 18999000,
+            'stock' => 5,
+            'is_active' => true,
+        ]);
+
+        $editResponse = $this->get(route('seller.products.edit', $product));
+        $editResponse->assertOk();
+        $editResponse->assertSee('Ubah Produk');
+        $editResponse->assertSee('Simpan Perubahan');
+    }
+
+    public function test_seller_can_view_promotions_management_pages(): void
+    {
+        $this->actingAs($this->seller);
+
+        $this->get(route('seller.promotions.index'))
+            ->assertOk()
+            ->assertSee('Promosi &amp; Diskon', false)
+            ->assertSee('Tambah Promosi');
+
+        $this->get(route('seller.promotions.create'))
+            ->assertOk()
+            ->assertSee('Tambah Promosi')
+            ->assertSee('Banner Promosi')
+            ->assertSee('Tanggal Mulai')
+            ->assertSee('Tanggal Berakhir');
+
+        $promotion = Promotion::create([
+            'created_by' => $this->seller->id,
+            'title' => 'Promo Spesial Apple',
+            'description' => 'Diskon perangkat Apple pilihan.',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(7)->toDateString(),
+            'is_active' => true,
+        ]);
+
+        $this->get(route('seller.promotions.edit', $promotion))
+            ->assertOk()
+            ->assertSee('Ubah Promosi')
+            ->assertSee('Simpan Perubahan');
+    }
+
+    public function test_seller_can_view_orders_index_and_detail_with_fulfillment_actions(): void
+    {
+        $this->actingAs($this->seller);
+
+        $this->get(route('seller.orders.index'))
+            ->assertOk()
+            ->assertSee('Daftar Pesanan')
+            ->assertSee('Filter Status Pesanan');
+
+        $order = Order::create([
+            'order_code' => 'ORD-1',
+            'user_id' => $this->buyer->id,
+            'status' => 'paid',
+            'recipient_name' => 'Budi Santoso',
+            'recipient_phone' => '081234567890',
+            'shipping_address' => 'Jl. Sudirman No. 45, Jakarta Pusat',
+            'subtotal' => 16500000,
+            'shipping_cost' => 25000,
+            'total_amount' => 16525000,
+        ]);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'gateway_order_id' => 'DOKU-ORD-1',
+            'provider' => 'doku_sandbox',
+            'amount' => 16525000,
+            'status' => 'paid',
+        ]);
+
+        $detailResponse = $this->get(route('seller.orders.show', $order));
+        $detailResponse->assertOk();
+        $detailResponse->assertSee('Detail Pesanan ORD-1');
+        $detailResponse->assertSee('Item Pesanan (Snapshot Permanen)');
+        $detailResponse->assertSee('Tindakan Pemenuhan Pesanan');
+        $detailResponse->assertSee('Tandai Diproses');
+        $detailResponse->assertSee('Nama Kurir Pengiriman');
+        $detailResponse->assertSee('Nomor Resi Pengiriman');
+        $detailResponse->assertSee('Batalkan Pesanan');
+        $detailResponse->assertSee('Rincian Pembayaran (DOKU Sandbox)');
+    }
+
+    public function test_seller_can_poll_payment_status_endpoint(): void
+    {
+        $this->actingAs($this->seller);
+
+        $order = Order::create([
+            'order_code' => 'ORD-POLL-1',
+            'user_id' => $this->buyer->id,
+            'status' => 'paid',
+            'recipient_name' => 'Budi Santoso',
+            'recipient_phone' => '081234567890',
+            'shipping_address' => 'Jl. Sudirman No. 45, Jakarta Pusat',
+            'subtotal' => 1000000,
+            'shipping_cost' => 25000,
+            'total_amount' => 1025000,
+        ]);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'gateway_order_id' => 'DOKU-ORD-POLL-1',
+            'provider' => 'doku_sandbox',
+            'amount' => 1025000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->getJson(route('seller.orders.payment.status', $order));
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'order_id',
+            'order_code',
+            'order_status',
+            'payment_status',
+        ]);
+    }
+
+    public function test_seller_can_view_payments_monitoring_page(): void
+    {
+        $this->actingAs($this->seller);
+
+        $this->get(route('seller.payments.index'))
+            ->assertOk()
+            ->assertSee('Pemantauan Pembayaran');
+    }
+
+    public function test_seller_can_view_sales_report_and_pdf_template(): void
+    {
+        $this->actingAs($this->seller);
+
+        $reportResponse = $this->get(route('seller.reports.index'));
+        $reportResponse->assertOk();
+        $reportResponse->assertSee('Laporan Penjualan');
+        $reportResponse->assertSee('Omzet Terverifikasi (Paid)');
+        $reportResponse->assertSee('Unduh Laporan PDF');
+
+        $pdfResponse = $this->get(route('seller.reports.pdf'));
+        $pdfResponse->assertOk();
+        $pdfResponse->assertHeader('content-type', 'application/pdf');
+    }
+}

@@ -3,54 +3,36 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
 use App\Models\Order;
-use App\Models\Product;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class OrderStatusService
 {
     /**
-     * Mark order as processing (Seller action).
-     * Only allowed from 'paid'.
-     *
-     * @throws ValidationException
+     * Mark order as processing (Seller).
      */
     public function markAsProcessing(Order $order): Order
     {
         if ($order->status !== OrderStatus::PAID) {
-            throw ValidationException::withMessages([
-                'order' => 'Hanya pesanan yang sudah dibayar (paid) yang dapat diproses.',
-            ]);
+            throw new \DomainException('Pesanan hanya dapat diproses jika sudah berstatus Dibayar.');
         }
 
-        $order->update([
-            'status' => OrderStatus::PROCESSING,
-        ]);
+        $order->update(['status' => OrderStatus::PROCESSING]);
 
         return $order->fresh();
     }
 
     /**
-     * Ship order with courier & tracking number (Seller action).
-     * Only allowed from 'processing'.
-     *
-     * @throws ValidationException
+     * Mark order as shipped with courier and tracking number (Seller).
      */
-    public function shipOrder(Order $order, string $courierName, string $trackingNumber): Order
+    public function markAsShipped(Order $order, string $courierName, string $trackingNumber): Order
     {
         if ($order->status !== OrderStatus::PROCESSING) {
-            throw ValidationException::withMessages([
-                'order' => 'Hanya pesanan yang sedang diproses yang dapat dikirim.',
-            ]);
+            throw new \DomainException('Pesanan hanya dapat dikirim jika sudah berstatus Diproses.');
         }
 
         if (trim($courierName) === '' || trim($trackingNumber) === '') {
-            throw ValidationException::withMessages([
-                'shipping' => 'Nama kurir dan nomor resi wajib diisi saat pengiriman.',
-            ]);
+            throw new \InvalidArgumentException('Nama kurir dan nomor resi wajib diisi.');
         }
 
         $order->update([
@@ -63,85 +45,45 @@ class OrderStatusService
     }
 
     /**
-     * Confirm receipt of order by buyer (Buyer action).
-     * Only allowed from 'shipped' by the owning buyer.
-     *
-     * @throws ValidationException
+     * Mark order as completed (Buyer only).
      */
-    public function confirmReceipt(Order $order, User $buyer): Order
+    public function markAsCompleted(Order $order): Order
     {
-        if ($order->user_id !== $buyer->id) {
-            throw ValidationException::withMessages([
-                'order' => 'Hanya pembeli pemilik pesanan yang dapat mengonfirmasi penerimaan.',
-            ]);
-        }
-
         if ($order->status !== OrderStatus::SHIPPED) {
-            throw ValidationException::withMessages([
-                'order' => 'Hanya pesanan berstatus dikirim yang dapat dikonfirmasi selesai.',
-            ]);
+            throw new \DomainException('Pesanan hanya dapat diselesaikan jika sudah berstatus Dikirim.');
         }
 
-        $order->update([
-            'status' => OrderStatus::COMPLETED,
-        ]);
+        $order->update(['status' => OrderStatus::COMPLETED]);
 
         return $order->fresh();
     }
 
     /**
-     * Cancel order and perform idempotent restock.
-     *
-     * @throws ValidationException
+     * Cancel order and restore stock idempotently via stock_restored_at guard (BR-04, ADR-03).
      */
-    public function cancelOrder(Order $order, string $reason = 'cancelled_by_user'): Order
+    public function cancelOrder(Order $order, string $reason = ''): Order
     {
-        if (! $order->canBeCancelled()) {
-            throw ValidationException::withMessages([
-                'order' => 'Pesanan dengan status ini tidak dapat dibatalkan.',
-            ]);
+        if ($order->status === OrderStatus::SHIPPED || $order->status === OrderStatus::COMPLETED) {
+            throw new \DomainException('Pesanan yang sudah dikirim atau selesai tidak dapat dibatalkan.');
         }
 
         DB::transaction(function () use ($order) {
-            $order->update([
-                'status' => OrderStatus::CANCELLED,
-            ]);
+            $order->update(['status' => OrderStatus::CANCELLED]);
 
-            if ($order->payment && ! $order->payment->isTerminal()) {
-                $order->payment->update([
-                    'status' => PaymentStatus::CANCELLED,
-                ]);
+            // Idempotent Restock Guard
+            if ($order->stock_restored_at === null) {
+                $order->loadMissing('items.product');
+
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                    }
+                }
+
+                $order->update(['stock_restored_at' => now()]);
             }
-
-            // Restore product stock idempotently
-            $this->restoreStock($order);
         });
 
         return $order->fresh();
-    }
-
-    /**
-     * Idempotently restore stock for an order using stock_restored_at guard (ADR-03 / BR-04).
-     */
-    public function restoreStock(Order $order): bool
-    {
-        if ($order->stock_restored_at !== null) {
-            // Already restored, prevent duplicate restock
-            return false;
-        }
-
-        $order->loadMissing('items.product');
-
-        foreach ($order->items as $item) {
-            if ($item->product_id) {
-                Product::where('id', $item->product_id)->increment('stock', $item->quantity);
-            }
-        }
-
-        $order->update([
-            'stock_restored_at' => now(),
-        ]);
-
-        return true;
     }
 }
