@@ -66,6 +66,18 @@ class Payment extends Model
         return $this->status === PaymentStatus::CANCELLED;
     }
 
+    public function isTerminal(): bool
+    {
+        return is_object($this->status)
+            ? $this->status->isTerminal()
+            : in_array($this->status, [
+                PaymentStatus::PAID->value,
+                PaymentStatus::EXPIRED->value,
+                PaymentStatus::FAILED->value,
+                PaymentStatus::CANCELLED->value,
+            ], true);
+    }
+
     public function isHistorical(): bool
     {
         return $this->provider === 'midtrans_sandbox';
